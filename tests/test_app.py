@@ -30,7 +30,10 @@ def test_simulate_renders_cards_and_plotly_histogram():
     )
 
     assert response.status_code == 200
-    assert "After-tax outcome distribution" in response.text
+    assert "After-tax SIP simulation" in response.text
+    assert "Nominal maturity distribution" in response.text
+    assert "Inflation-adjusted maturity distribution" in response.text
+    assert "Principal and after-tax corpus over time" in response.text
     assert "2.5 percentile" in response.text
     assert "Plotly.newPlot" in response.text
     assert '"type":"line"' in response.text
@@ -39,6 +42,8 @@ def test_simulate_renders_cards_and_plotly_histogram():
     assert '"text":"50%"' in response.text
     assert '"text":"75%"' in response.text
     assert '"text":"97.5%"' in response.text
+    assert "Principal invested" in response.text
+    assert "50th percentile after-tax corpus" in response.text
 
 
 def test_simulate_accepts_15000_monthly_sip():
@@ -54,7 +59,7 @@ def test_simulate_accepts_15000_monthly_sip():
     )
 
     assert response.status_code == 200
-    assert "After-tax outcome distribution" in response.text
+    assert "After-tax SIP simulation" in response.text
     assert "Rs 15,000" in response.text
 
 

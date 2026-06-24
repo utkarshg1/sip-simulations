@@ -5,6 +5,7 @@ from simulation import (
     STCG_RATE,
     SimulationInputs,
     apply_exit_tax,
+    build_monthly_after_tax_paths,
     build_summary,
     run_simulation,
 )
@@ -24,6 +25,22 @@ def test_fixed_sip_principal_calculation():
 
     assert result.total_invested == 240_000
     assert result.monthly_sip == 10_000
+    assert np.array_equal(result.monthly_path["principal"], np.arange(1, 25) * 10_000)
+
+
+def test_real_summary_uses_real_after_tax_values():
+    result = run_simulation(
+        SimulationInputs(
+            monthly_sip=10_000,
+            years=2,
+            expected_inflation_rate=6,
+            expected_return_rate=12,
+            seed=2,
+            simulations=500,
+        )
+    )
+
+    assert result.real_summary == build_summary(result.real_values_after_tax)
 
 
 def test_summary_statistics_for_known_array():
@@ -51,6 +68,21 @@ def test_tax_applies_stcg_ltcg_and_exemption():
     expected_tax = short_term_gains * STCG_RATE + max(long_term_gains - LTCG_EXEMPTION, 0) * 0.125
 
     assert after_tax[0] == gross_value - expected_tax
+
+
+def test_monthly_after_tax_path_applies_redemption_month_tax():
+    monthly_sip = 100_000
+    monthly_returns = np.zeros((1, 14))
+    monthly_returns[0, -1] = 1.0
+
+    path = build_monthly_after_tax_paths(monthly_sip, monthly_returns)
+
+    gross_value = monthly_sip * 2 * 13 + monthly_sip
+    short_term_gains = monthly_sip * 11
+    long_term_gains = monthly_sip * 2
+    expected_tax = short_term_gains * STCG_RATE + max(long_term_gains - LTCG_EXEMPTION, 0) * 0.125
+
+    assert path[0, -1] == gross_value - expected_tax
 
 
 def test_same_seed_reproduces_results():

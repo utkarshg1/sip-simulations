@@ -76,7 +76,20 @@ async def simulate(
         return render_form_with_errors(request, form, errors)
 
     result = run_simulation(inputs)
-    histogram_html = build_histogram(result.final_values_after_tax, result.summary)
+    nominal_histogram_html = build_histogram(
+        result.final_values_after_tax,
+        result.summary,
+        title="Future after-tax maturity value",
+        xaxis_title="Future after-tax maturity value",
+    )
+    real_histogram_html = build_histogram(
+        result.real_values_after_tax,
+        result.real_summary,
+        title="Today's-worth after-tax value",
+        xaxis_title="Today's-worth after-tax value",
+        bar_color="#818cf8",
+    )
+    monthly_path_html = build_monthly_path_chart(result.monthly_path)
 
     return templates.TemplateResponse(
         request,
@@ -85,7 +98,10 @@ async def simulate(
             "form": form,
             "result": result,
             "summary_cards": build_summary_cards(result.summary),
-            "histogram_html": histogram_html,
+            "real_summary_cards": build_summary_cards(result.real_summary),
+            "nominal_histogram_html": nominal_histogram_html,
+            "real_histogram_html": real_histogram_html,
+            "monthly_path_html": monthly_path_html,
         },
     )
 
@@ -122,13 +138,19 @@ def render_form_with_errors(
     )
 
 
-def build_histogram(values, summary: dict[str, float]) -> str:
+def build_histogram(
+    values,
+    summary: dict[str, float],
+    title: str,
+    xaxis_title: str,
+    bar_color: str = "#14b8a6",
+) -> str:
     figure = go.Figure()
     figure.add_trace(
         go.Histogram(
             x=values,
             nbinsx=70,
-            marker_color="#14b8a6",
+            marker_color=bar_color,
             opacity=0.88,
             hovertemplate="After-tax value: Rs %{x:,.0f}<br>Runs: %{y}<extra></extra>",
         )
@@ -159,8 +181,97 @@ def build_histogram(values, summary: dict[str, float]) -> str:
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(255,255,255,0.96)",
         bargap=0.02,
-        xaxis_title="After-tax maturity value",
+        title={"text": title, "x": 0.01, "xanchor": "left"},
+        xaxis_title=xaxis_title,
         yaxis_title="Simulation count",
+        font={"family": "Inter, ui-sans-serif, system-ui"},
+    )
+    return to_html(
+        figure,
+        full_html=False,
+        include_plotlyjs="cdn",
+        config={"displayModeBar": False, "responsive": True},
+    )
+
+
+def build_monthly_path_chart(monthly_path: dict) -> str:
+    x_values = monthly_path["years"]
+    figure = go.Figure()
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["p97_5"],
+            mode="lines",
+            line={"width": 0},
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["p2_5"],
+            mode="lines",
+            fill="tonexty",
+            fillcolor="rgba(129, 140, 248, 0.14)",
+            line={"width": 0},
+            name="2.5-97.5 percentile band",
+            hovertemplate="Year %{x:.1f}<br>2.5%: Rs %{y:,.0f}<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["p75"],
+            mode="lines",
+            line={"width": 0},
+            showlegend=False,
+            hoverinfo="skip",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["p25"],
+            mode="lines",
+            fill="tonexty",
+            fillcolor="rgba(20, 184, 166, 0.20)",
+            line={"width": 0},
+            name="25-75 percentile band",
+            hovertemplate="Year %{x:.1f}<br>25%: Rs %{y:,.0f}<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["p50"],
+            mode="lines",
+            line={"color": "#0f766e", "width": 3},
+            name="50th percentile after-tax corpus",
+            hovertemplate="Year %{x:.1f}<br>Median corpus: Rs %{y:,.0f}<extra></extra>",
+        )
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["principal"],
+            mode="lines",
+            line={"color": "#f59e0b", "width": 3, "dash": "dash"},
+            name="Principal invested",
+            hovertemplate="Year %{x:.1f}<br>Principal: Rs %{y:,.0f}<extra></extra>",
+        )
+    )
+    figure.update_layout(
+        template="plotly_white",
+        margin={"l": 56, "r": 28, "t": 58, "b": 54},
+        height=560,
+        title={"text": "Monthly after-tax corpus path", "x": 0.01, "xanchor": "left"},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(255,255,255,0.96)",
+        xaxis_title="Investment year",
+        yaxis_title="After-tax corpus",
+        hovermode="x unified",
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
         font={"family": "Inter, ui-sans-serif, system-ui"},
     )
     return to_html(

@@ -6,9 +6,9 @@
     <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <a href="/" class="mb-5 inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-bold text-teal-100 transition hover:bg-white/15">New simulation</a>
-        <h1 class="max-w-5xl text-4xl font-black tracking-tight text-white sm:text-5xl">After-tax outcome distribution</h1>
+        <h1 class="max-w-5xl text-4xl font-black tracking-tight text-white sm:text-5xl">After-tax SIP simulation</h1>
         <p class="mt-3 max-w-3xl text-base text-slate-300 sm:text-lg">
-          {{ "{:,}".format(result.simulations) }} simulations for Rs {{ "{:,.0f}".format(result.monthly_sip) }} monthly SIP over {{ result.years }} years.
+          {{ "{:,}".format(result.simulations) }} simulations for Rs {{ "{:,.0f}".format(result.monthly_sip) }} monthly SIP over {{ result.years }} years. Future values are nominal rupees; today's-worth values are inflation-adjusted.
         </p>
       </div>
       <div class="min-w-32 rounded-2xl border border-white/15 bg-white/10 p-4 text-left shadow-lg shadow-slate-950/10 backdrop-blur lg:text-right">
@@ -18,18 +18,24 @@
     </div>
   </div>
 
-  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-    {% for card in summary_cards %}
-      <article class="metric-card tone-{{ card.tone }}">
-        <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">{{ card.label }}</p>
-        <p class="mt-4 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Rs {{ "{:,.0f}".format(card.value) }}</p>
-      </article>
-    {% endfor %}
-  </div>
+  <section class="grid gap-4">
+    <div>
+      <p class="text-sm font-extrabold uppercase tracking-[0.18em] text-teal-200">Future after net tax</p>
+      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Nominal maturity distribution</h2>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {% for card in summary_cards %}
+        <article class="metric-card tone-{{ card.tone }}">
+          <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">{{ card.label }}</p>
+          <p class="mt-4 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Rs {{ "{:,.0f}".format(card.value) }}</p>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
 
   <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
     <section class="rounded-[1.75rem] border border-white/20 bg-white p-3 shadow-2xl shadow-slate-950/25 sm:p-5">
-      {{ histogram_html | safe }}
+      {{ nominal_histogram_html | safe }}
     </section>
 
     <aside class="grid gap-4 md:grid-cols-3 xl:grid-cols-1">
@@ -42,11 +48,39 @@
         <p class="mt-3 text-3xl font-black tracking-tight">Rs {{ "{:,.0f}".format(result.monthly_sip) }}</p>
       </div>
       <div class="stat-card">
-        <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">Real average value</p>
-        <p class="mt-3 text-3xl font-black tracking-tight">Rs {{ "{:,.0f}".format(result.real_values_after_tax.mean()) }}</p>
-        <p class="mt-3 text-sm leading-6 text-slate-500">Inflation-adjusted mean across sampled inflation paths.</p>
+        <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">Nominal average value</p>
+        <p class="mt-3 text-3xl font-black tracking-tight">Rs {{ "{:,.0f}".format(result.summary.average) }}</p>
+        <p class="mt-3 text-sm leading-6 text-slate-500">Future rupees after the simplified exit-tax model.</p>
       </div>
     </aside>
   </div>
+
+  <section class="grid gap-4">
+    <div>
+      <p class="text-sm font-extrabold uppercase tracking-[0.18em] text-indigo-200">Today's worth after net tax</p>
+      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Inflation-adjusted maturity distribution</h2>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {% for card in real_summary_cards %}
+        <article class="metric-card tone-{{ card.tone }}">
+          <p class="text-sm font-extrabold uppercase tracking-wide text-slate-500">{{ card.label }}</p>
+          <p class="mt-4 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Rs {{ "{:,.0f}".format(card.value) }}</p>
+        </article>
+      {% endfor %}
+    </div>
+    <section class="rounded-[1.75rem] border border-white/20 bg-white p-3 shadow-2xl shadow-slate-950/25 sm:p-5">
+      {{ real_histogram_html | safe }}
+    </section>
+  </section>
+
+  <section class="grid gap-4">
+    <div>
+      <p class="text-sm font-extrabold uppercase tracking-[0.18em] text-amber-200">Monthly path</p>
+      <h2 class="mt-2 text-2xl font-black tracking-tight text-white">Principal and after-tax corpus over time</h2>
+    </div>
+    <section class="rounded-[1.75rem] border border-white/20 bg-white p-3 shadow-2xl shadow-slate-950/25 sm:p-5">
+      {{ monthly_path_html | safe }}
+    </section>
+  </section>
 </section>
 {% endblock %}
