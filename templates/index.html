@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="grid flex-1 items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+  <div class="max-w-2xl">
+    <p class="mb-4 inline-flex rounded-full border border-teal-300/30 bg-teal-300/10 px-4 py-2 text-sm font-semibold text-teal-100">
+      {{ "{:,}".format(simulation_count) }} NumPy simulations
+    </p>
+    <h1 class="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl">
+      Monte Carlo SIP outcomes, after tax.
+    </h1>
+    <p class="mt-6 max-w-xl text-lg leading-8 text-slate-300">
+      Enter your fixed monthly SIP, expected inflation, return assumption, and seed. The app samples return and inflation paths, applies equity mutual fund exit tax, and shows the distribution.
+    </p>
+    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+      <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+        <p class="text-sm text-slate-300">Return noise</p>
+        <p class="mt-1 text-2xl font-bold text-white">+/- 3%</p>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+        <p class="text-sm text-slate-300">Inflation noise</p>
+        <p class="mt-1 text-2xl font-bold text-white">+/- 3%</p>
+      </div>
+      <div class="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur">
+        <p class="text-sm text-slate-300">SIP style</p>
+        <p class="mt-1 text-2xl font-bold text-white">Fixed</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-3xl border border-white/15 bg-white/95 p-6 text-slate-950 shadow-2xl shadow-teal-950/40 sm:p-8">
+    <div class="mb-6">
+      <h2 class="text-2xl font-black tracking-tight">Simulation inputs</h2>
+      <p class="mt-2 text-sm text-slate-600">All rates are annual percentages. Seed can be blank for a fresh run.</p>
+    </div>
+
+    {% if errors %}
+      <div class="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-800">
+        {% for error in errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form action="/simulate" method="post" class="grid gap-5">
+      <label class="grid min-w-0 gap-2">
+        <span class="text-sm font-bold text-slate-700">Monthly SIP amount</span>
+        <input class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold outline-none ring-teal-500 transition focus:ring-4" type="number" min="100" step="100" name="monthly_sip" value="{{ form.monthly_sip }}" required>
+      </label>
+
+      <div class="grid gap-5 md:grid-cols-2 md:gap-6">
+        <label class="grid min-w-0 gap-2">
+          <span class="text-sm font-bold text-slate-700">Investment years</span>
+          <input class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold outline-none ring-teal-500 transition focus:ring-4" type="number" min="1" max="60" step="1" name="years" value="{{ form.years }}" required>
+        </label>
+        <label class="grid min-w-0 gap-2">
+          <span class="text-sm font-bold text-slate-700">Seed</span>
+          <input class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold outline-none ring-teal-500 transition focus:ring-4" type="number" step="1" name="seed" value="{{ form.seed }}">
+        </label>
+      </div>
+
+      <div class="grid gap-5 md:grid-cols-2 md:gap-6">
+        <label class="grid min-w-0 gap-2">
+          <span class="text-sm font-bold leading-snug text-slate-700">Expected inflation %</span>
+          <input class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold outline-none ring-teal-500 transition focus:ring-4" type="number" min="-98" step="0.1" name="expected_inflation_rate" value="{{ form.expected_inflation_rate }}" required>
+        </label>
+        <label class="grid min-w-0 gap-2">
+          <span class="text-sm font-bold leading-snug text-slate-700">Expected SIP return %</span>
+          <input class="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-semibold outline-none ring-teal-500 transition focus:ring-4" type="number" min="-98" step="0.1" name="expected_return_rate" value="{{ form.expected_return_rate }}" required>
+        </label>
+      </div>
+
+      <button class="mt-2 rounded-2xl bg-teal-500 px-5 py-4 text-base font-black text-slate-950 shadow-lg shadow-teal-500/25 transition hover:bg-teal-300 focus:outline-none focus:ring-4 focus:ring-teal-300" type="submit">
+        Run simulation
+      </button>
+    </form>
+  </div>
+</section>
+{% endblock %}
