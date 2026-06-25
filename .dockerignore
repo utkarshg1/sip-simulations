@@ -1,0 +1,12 @@
+.venv
+.pythonlibs
+__pycache__
+*.py[cod]
+*.egg-info
+.git
+.gitignore
+.python-version
+tests/
+*.md
+.agents/
+.local/
