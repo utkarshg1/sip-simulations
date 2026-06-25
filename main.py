@@ -18,8 +18,8 @@ templates = Jinja2Templates(directory="templates")
 
 
 DEFAULT_FORM = {
-    "monthly_sip": 25_000,
-    "years": 20,
+    "monthly_sip": 15_000,
+    "years": 5,
     "expected_inflation_rate": 8,
     "expected_return_rate": 10,
     "seed": 42,
