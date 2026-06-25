@@ -8,11 +8,70 @@
     <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
   </head>
   <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+
+    <!-- Simulation Loading Overlay -->
+    <div id="sim-overlay" aria-live="polite" aria-label="Running simulation">
+      <div class="sim-particles">
+        <div class="particle">₹</div>
+        <div class="particle">%</div>
+        <div class="particle">∑</div>
+        <div class="particle">₹</div>
+        <div class="particle">μ</div>
+        <div class="particle">σ</div>
+        <div class="particle">∞</div>
+        <div class="particle">%</div>
+      </div>
+      <div class="sim-center">
+        <div class="spinner-rings">
+          <div class="ring ring-1"></div>
+          <div class="ring ring-2"></div>
+          <div class="ring ring-3"></div>
+          <div class="ring-dot"></div>
+        </div>
+        <div>
+          <p class="sim-title">Crunching numbers <span class="dots"><span></span><span></span><span></span></span></p>
+          <p class="sim-subtitle">Running 1,00,000 Monte Carlo simulations</p>
+        </div>
+        <div class="sim-progress-bar">
+          <div class="sim-progress-fill"></div>
+        </div>
+      </div>
+    </div>
+
     <main class="relative min-h-screen overflow-hidden">
-      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.26),_transparent_32%),linear-gradient(135deg,_#020617_0%,_#111827_42%,_#134e4a_100%)]"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(20,184,166,0.22),_transparent_38%),radial-gradient(ellipse_at_bottom_right,_rgba(99,102,241,0.14),_transparent_40%),linear-gradient(135deg,_#020617_0%,_#0f172a_48%,_#134e4a_100%)]"></div>
+
+      <!-- Subtle grid overlay -->
+      <div class="absolute inset-0 opacity-[0.025]" style="background-image:linear-gradient(rgba(255,255,255,0.8) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.8) 1px,transparent 1px);background-size:40px 40px"></div>
+
       <div class="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-8 sm:px-8 lg:px-10">
+        <!-- Header -->
+        <header class="mb-8 flex items-center justify-between fade-up">
+          <a href="/" class="flex items-center gap-2.5 group">
+            <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-500/20 ring-1 ring-teal-400/30 transition group-hover:bg-teal-500/30">
+              <svg class="h-4 w-4 text-teal-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            </div>
+            <span class="text-sm font-bold tracking-tight text-slate-200 group-hover:text-white transition">SIP Simulator</span>
+          </a>
+          <div class="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-400 backdrop-blur">
+            Monte Carlo · NumPy · FastAPI
+          </div>
+        </header>
+
         {% block content %}{% endblock %}
       </div>
     </main>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form[action="/simulate"]');
+        const overlay = document.getElementById('sim-overlay');
+        if (form && overlay) {
+          form.addEventListener('submit', function () {
+            overlay.classList.add('active');
+          });
+        }
+      });
+    </script>
   </body>
 </html>
