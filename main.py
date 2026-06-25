@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Optional
+from urllib.parse import urlencode
 
 import plotly.graph_objects as go
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Query, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from plotly.io import to_html
@@ -40,7 +41,7 @@ async def index(request: Request) -> HTMLResponse:
 
 
 @app.post("/simulate", response_class=HTMLResponse)
-async def simulate(
+async def simulate_post(
     request: Request,
     monthly_sip: Annotated[float, Form()],
     years: Annotated[int, Form()],
@@ -75,6 +76,59 @@ async def simulate(
     if errors:
         return render_form_with_errors(request, form, errors)
 
+    # Redirect to GET so the URL is shareable
+    params: dict[str, str] = {
+        "monthly_sip": str(monthly_sip),
+        "years": str(years),
+        "expected_inflation_rate": str(expected_inflation_rate),
+        "expected_return_rate": str(expected_return_rate),
+    }
+    if seed.strip():
+        params["seed"] = seed.strip()
+    return RedirectResponse(url=f"/simulate?{urlencode(params)}", status_code=303)
+
+
+@app.get("/simulate", response_class=HTMLResponse)
+async def simulate_get(
+    request: Request,
+    monthly_sip: Annotated[float, Query()],
+    years: Annotated[int, Query()],
+    expected_inflation_rate: Annotated[float, Query()],
+    expected_return_rate: Annotated[float, Query()],
+    seed: Annotated[Optional[str], Query()] = None,
+) -> HTMLResponse:
+    seed_str = seed or ""
+    parsed_seed = parse_seed(seed_str)
+    form = {
+        "monthly_sip": monthly_sip,
+        "years": years,
+        "expected_inflation_rate": expected_inflation_rate,
+        "expected_return_rate": expected_return_rate,
+        "seed": seed_str,
+    }
+
+    if parsed_seed == "invalid":
+        return render_form_with_errors(
+            request,
+            form,
+            ["Seed must be a whole number or left blank."],
+        )
+
+    inputs = SimulationInputs(
+        monthly_sip=monthly_sip,
+        years=years,
+        expected_inflation_rate=expected_inflation_rate,
+        expected_return_rate=expected_return_rate,
+        seed=parsed_seed,
+    )
+    errors = validate_inputs(inputs)
+    if errors:
+        return render_form_with_errors(request, form, errors)
+
+    return _render_results(request, inputs, form)
+
+
+def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> HTMLResponse:
     result = run_simulation(inputs)
     nominal_histogram_html = build_histogram(
         result.final_values_after_tax,
