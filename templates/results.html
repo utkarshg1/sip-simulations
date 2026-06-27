@@ -10,8 +10,8 @@
 
 <section class="mx-auto grid w-full max-w-[1500px] gap-5 py-2">
 
-  <!-- Header card -->
-  <div class="rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-slate-950/20 backdrop-blur sm:p-6">
+  <!-- Header card — no backdrop-blur, no fade-up (both cause rotation bug in Chrome) -->
+  <div class="rounded-2xl border border-white/10 bg-slate-800/90 p-4 sm:p-6">
     <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div class="min-w-0">
         <!-- Action buttons row -->
@@ -28,43 +28,21 @@
           </button>
         </div>
 
-        <!-- ── Fixed vs Step-up mode toggle ── -->
-        <div class="mb-4">
-          <p class="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">SIP mode</p>
-          <div class="results-seg relative inline-flex rounded-2xl bg-slate-900 p-1 ring-1 ring-white/8">
-
-            <!-- Fixed button -->
-            <a href="{{ fixed_url }}"
-              class="results-seg-btn flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200
-                {% if result.step_up_rate == 0 %}
-                  bg-white text-slate-900 shadow-md
-                {% else %}
-                  text-slate-400 hover:text-slate-200 hover:bg-white/5
-                {% endif %}">
-              <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" d="M4 12h16M4 7h6M4 17h6"/>
-              </svg>
+        <!-- Fixed vs Step-up toggle — pure inline styles, no Tailwind classes -->
+        <div style="margin-bottom:1rem;">
+          <p style="margin-bottom:0.5rem;font-size:10px;font-weight:800;letter-spacing:0.15em;text-transform:uppercase;color:#64748b;">SIP mode</p>
+          <div style="display:inline-flex;flex-direction:row;align-items:center;background:#0f172a;border-radius:0.75rem;padding:4px;border:1px solid rgba(255,255,255,0.1);writing-mode:horizontal-tb;direction:ltr;">
+            <a href="{{ fixed_url }}" style="display:inline-flex;flex-direction:row;align-items:center;gap:8px;border-radius:0.5rem;padding:8px 16px;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;writing-mode:horizontal-tb;
+              {% if result.step_up_rate == 0 %}background:#ffffff;color:#0f172a;{% else %}background:transparent;color:#94a3b8;{% endif %}">
+              <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" d="M4 12h16M4 7h6M4 17h6"/></svg>
               Fixed SIP
-              {% if result.step_up_rate == 0 %}
-                <span class="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-black text-slate-600 tracking-tight">Active</span>
-              {% endif %}
+              {% if result.step_up_rate == 0 %}<span style="border-radius:9999px;background:#f1f5f9;padding:2px 6px;font-size:10px;font-weight:900;color:#64748b;">Active</span>{% endif %}
             </a>
-
-            <!-- Step-up button -->
-            <a href="{{ stepup_url }}"
-              class="results-seg-btn flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all duration-200
-                {% if result.step_up_rate > 0 %}
-                  bg-gradient-to-br from-teal-600 to-teal-500 text-white shadow-[0_2px_12px_rgba(13,148,136,0.4)]
-                {% else %}
-                  text-slate-400 hover:text-slate-200 hover:bg-white/5
-                {% endif %}">
-              <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
-              </svg>
+            <a href="{{ stepup_url }}" style="display:inline-flex;flex-direction:row;align-items:center;gap:8px;border-radius:0.5rem;padding:8px 16px;font-size:14px;font-weight:700;text-decoration:none;white-space:nowrap;writing-mode:horizontal-tb;
+              {% if result.step_up_rate > 0 %}background:#14b8a6;color:#ffffff;{% else %}background:transparent;color:#94a3b8;{% endif %}">
+              <svg style="width:14px;height:14px;flex-shrink:0;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/></svg>
               Step-up SIP
-              {% if result.step_up_rate > 0 %}
-                <span class="rounded-full bg-teal-400/25 px-1.5 py-0.5 text-[10px] font-black text-teal-100 tracking-tight">{{ result.step_up_rate }}% / yr</span>
-              {% endif %}
+              {% if result.step_up_rate > 0 %}<span style="border-radius:9999px;background:rgba(45,212,191,0.25);padding:2px 6px;font-size:10px;font-weight:900;color:#ccfbf1;">{{ result.step_up_rate }}% / yr</span>{% endif %}
             </a>
           </div>
         </div>
@@ -78,11 +56,11 @@
         </p>
       </div>
       <div class="flex shrink-0 flex-wrap gap-2">
-        <div class="rounded-xl border border-white/12 bg-white/8 px-4 py-3 backdrop-blur">
+        <div class="rounded-xl border border-white/12 bg-white/8 px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Seed</p>
           <p class="mt-0.5 text-xl font-black text-white">{{ result.seed if result.seed is not none else "Random" }}</p>
         </div>
-        <div class="rounded-xl border border-teal-500/20 bg-teal-500/8 px-4 py-3 backdrop-blur">
+        <div class="rounded-xl border border-teal-500/20 bg-teal-500/10 px-4 py-3">
           <p class="text-xs font-semibold uppercase tracking-widest text-teal-400">Total invested</p>
           <p class="mt-0.5 text-xl font-black text-white">Rs {{ "{:,.0f}".format(result.total_invested) }}</p>
         </div>
@@ -90,10 +68,10 @@
     </div>
   </div>
 
-  <!-- Step-up schedule (only when step_up_rate > 0) -->
+  <!-- Step-up schedule -->
   {% if result.step_up_rate > 0 and result.yearly_sip_schedule %}
-  <section class="fade-up">
-    <details class="group rounded-2xl border border-amber-400/20 bg-amber-400/5 backdrop-blur">
+  <section>
+    <details class="group rounded-2xl border border-amber-400/20 bg-amber-400/5">
       <summary class="flex cursor-pointer list-none items-center justify-between p-4 sm:p-5">
         <div class="flex items-center gap-3">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-400/15">
@@ -122,7 +100,7 @@
   {% endif %}
 
   <!-- Nominal distribution -->
-  <section class="fade-up fade-up-1 grid gap-3">
+  <section class="grid gap-3">
     <div>
       <p class="section-label text-teal-300">Future after net tax</p>
       <h2 class="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">Nominal maturity distribution</h2>
@@ -138,10 +116,8 @@
   </section>
 
   <!-- Nominal chart + sidebar -->
-  <div class="fade-up fade-up-2 grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-    <div class="chart-wrap">
-      {{ nominal_histogram_html | safe }}
-    </div>
+  <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
+    <div class="chart-wrap">{{ nominal_histogram_html | safe }}</div>
     <aside class="grid gap-3 grid-cols-3 xl:grid-cols-1">
       <div class="stat-card">
         <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Monthly SIP</p>
@@ -162,14 +138,14 @@
   </div>
 
   <!-- Divider -->
-  <div class="fade-up flex items-center gap-4">
+  <div class="flex items-center gap-4">
     <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
     <span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-500">Inflation-adjusted view</span>
     <div class="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
   </div>
 
   <!-- Real distribution -->
-  <section class="fade-up fade-up-3 grid gap-3">
+  <section class="grid gap-3">
     <div>
       <p class="section-label text-indigo-300">Today's worth after net tax</p>
       <h2 class="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">Inflation-adjusted maturity distribution</h2>
@@ -182,24 +158,20 @@
         </article>
       {% endfor %}
     </div>
-    <div class="chart-wrap">
-      {{ real_histogram_html | safe }}
-    </div>
+    <div class="chart-wrap">{{ real_histogram_html | safe }}</div>
   </section>
 
   <!-- Monthly path -->
-  <section class="fade-up fade-up-4 grid gap-3">
+  <section class="grid gap-3">
     <div>
       <p class="section-label text-amber-300">Monthly path</p>
       <h2 class="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">Principal and after-tax corpus over time</h2>
     </div>
-    <div class="chart-wrap">
-      {{ monthly_path_html | safe }}
-    </div>
+    <div class="chart-wrap">{{ monthly_path_html | safe }}</div>
   </section>
 
-  <!-- Footer action -->
-  <div class="fade-up pb-4 text-center">
+  <!-- Footer -->
+  <div class="pb-4 text-center">
     <a href="/" class="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/8 px-6 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/14 hover:text-white">
       <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
       Run another simulation
