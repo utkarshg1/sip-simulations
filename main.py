@@ -251,6 +251,8 @@ def build_histogram(
 def build_monthly_path_chart(monthly_path: dict) -> str:
     x_values = monthly_path["years"]
     figure = go.Figure()
+
+    # Outer band fill (2.5 – 97.5)
     figure.add_trace(
         go.Scatter(
             x=x_values,
@@ -258,7 +260,7 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             mode="lines",
             line={"width": 0},
             showlegend=False,
-            hovertemplate="Year %{x:.1f}<br>97.5%: Rs %{y:,.0f}<extra></extra>",
+            hoverinfo="skip",
         )
     )
     figure.add_trace(
@@ -269,10 +271,12 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             fill="tonexty",
             fillcolor="rgba(129, 140, 248, 0.14)",
             line={"width": 0},
-            name="2.5-97.5 percentile band",
-            hovertemplate="Year %{x:.1f}<br>2.5%: Rs %{y:,.0f}<extra></extra>",
+            name="2.5–97.5 percentile band",
+            hoverinfo="skip",
         )
     )
+
+    # Inner band fill (25 – 75)
     figure.add_trace(
         go.Scatter(
             x=x_values,
@@ -291,10 +295,12 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             fill="tonexty",
             fillcolor="rgba(20, 184, 166, 0.20)",
             line={"width": 0},
-            name="25-75 percentile band",
+            name="25–75 percentile band",
             hoverinfo="skip",
         )
     )
+
+    # Median line
     figure.add_trace(
         go.Scatter(
             x=x_values,
@@ -302,9 +308,11 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             mode="lines",
             line={"color": "#0f766e", "width": 3},
             name="50th percentile after-tax corpus",
-            hovertemplate="Year %{x:.1f}<br>Median corpus: Rs %{y:,.0f}<extra></extra>",
+            hoverinfo="skip",
         )
     )
+
+    # Principal line
     figure.add_trace(
         go.Scatter(
             x=x_values,
@@ -312,7 +320,37 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             mode="lines",
             line={"color": "#f59e0b", "width": 3, "dash": "dash"},
             name="Principal invested",
-            hovertemplate="Year %{x:.1f}<br>Principal: Rs %{y:,.0f}<extra></extra>",
+            hoverinfo="skip",
+        )
+    )
+
+    # Single ghost trace — carries all 6 values, drives the entire tooltip
+    figure.add_trace(
+        go.Scatter(
+            x=x_values,
+            y=monthly_path["p50"],
+            mode="lines",
+            line={"width": 0},
+            showlegend=False,
+            customdata=list(zip(
+                monthly_path["principal"],
+                monthly_path["p2_5"],
+                monthly_path["p25"],
+                monthly_path["p50"],
+                monthly_path["p75"],
+                monthly_path["p97_5"],
+            )),
+            hovertemplate=(
+                "<b>Year %{x:.1f}</b><br>"
+                "─────────────────<br>"
+                "Principal &nbsp;&nbsp;&nbsp;&nbsp;: Rs %{customdata[0]:,.0f}<br>"
+                "2.5 pctile &nbsp;&nbsp;: Rs %{customdata[1]:,.0f}<br>"
+                "25 pctile &nbsp;&nbsp;&nbsp;: Rs %{customdata[2]:,.0f}<br>"
+                "50 pctile &nbsp;&nbsp;&nbsp;: Rs %{customdata[3]:,.0f}<br>"
+                "75 pctile &nbsp;&nbsp;&nbsp;: Rs %{customdata[4]:,.0f}<br>"
+                "97.5 pctile : Rs %{customdata[5]:,.0f}"
+                "<extra></extra>"
+            ),
         )
     )
     figure.update_layout(
@@ -324,7 +362,7 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
         plot_bgcolor="rgba(255,255,255,0.96)",
         xaxis_title="Investment year",
         yaxis_title="After-tax corpus",
-        hovermode="x unified",
+        hovermode="closest",
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
         font={"family": "Inter, ui-sans-serif, system-ui"},
     )
