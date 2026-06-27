@@ -200,3 +200,76 @@ body { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0,0,0,0); white-space: nowrap; border-width: 0;
 }
+
+/* ── SIP Segmented Control (form page) ── */
+.sip-seg { user-select: none; }
+.seg-btn  { cursor: pointer; border: none; background: none; width: 100%; }
+.seg-btn:focus-visible { outline: 2px solid #14b8a6; outline-offset: 2px; border-radius: 0.75rem; }
+
+/* ── Step-up rate range slider ── */
+.step-up-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #14b8a6 0%, #14b8a6 var(--pct, 18%), #e2e8f0 var(--pct, 18%));
+  outline: none;
+  cursor: pointer;
+  transition: background 80ms;
+}
+.step-up-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #14b8a6;
+  box-shadow: 0 2px 8px rgba(20,184,166,0.40);
+  cursor: grab;
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+.step-up-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.15);
+  box-shadow: 0 4px 16px rgba(20,184,166,0.55);
+}
+.step-up-slider::-moz-range-thumb {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #14b8a6;
+  box-shadow: 0 2px 8px rgba(20,184,166,0.40);
+  cursor: grab;
+}
+
+/* ── Step-up preset buttons ── */
+.preset-btn {
+  flex: 1;
+  min-width: 0;
+  border-radius: 0.5rem;
+  border: 1.5px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease, color 120ms ease, box-shadow 120ms ease;
+}
+.preset-btn:hover {
+  border-color: #99f6e4;
+  background: #f0fdf9;
+  color: #0f766e;
+}
+.preset-btn-active {
+  border-color: #14b8a6 !important;
+  background: #f0fdf9 !important;
+  color: #0f766e !important;
+  box-shadow: 0 0 0 3px rgba(20,184,166,0.15);
+}
+
+/* ── Results page segmented toggle ── */
+.results-seg { gap: 2px; }
+.results-seg-btn { white-space: nowrap; }
+.results-seg-teal-pill { z-index: 0; }
