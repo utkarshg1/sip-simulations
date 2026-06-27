@@ -25,7 +25,7 @@ DEFAULT_FORM = {
     "expected_return_rate": 10,
     "seed": 42,
     "step_up_rate": 10,
-    "step_up_enabled": True,
+    "step_up_enabled": False,
 }
 
 
