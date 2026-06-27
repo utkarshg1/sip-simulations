@@ -258,7 +258,7 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             mode="lines",
             line={"width": 0},
             showlegend=False,
-            hoverinfo="skip",
+            hovertemplate="Year %{x:.1f}<br>97.5%: Rs %{y:,.0f}<extra></extra>",
         )
     )
     figure.add_trace(
@@ -292,7 +292,7 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             fillcolor="rgba(20, 184, 166, 0.20)",
             line={"width": 0},
             name="25-75 percentile band",
-            hovertemplate="Year %{x:.1f}<br>25%: Rs %{y:,.0f}<extra></extra>",
+            hoverinfo="skip",
         )
     )
     figure.add_trace(
