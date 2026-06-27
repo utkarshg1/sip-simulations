@@ -1,58 +1,69 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="grid flex-1 items-center gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+<section class="grid flex-1 items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
 
-  <!-- Left hero -->
-  <div class="max-w-2xl">
+  <!-- Left hero (hidden on small screens to prioritise the form) -->
+  <div class="hidden lg:block max-w-2xl">
     <div class="fade-up fade-up-1 mb-5 inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-4 py-2 text-sm font-semibold text-teal-200 backdrop-blur">
       <span class="flex h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_6px_2px_rgba(52,211,153,0.7)]"></span>
       {{ "{:,}".format(simulation_count) }} NumPy simulations
     </div>
 
-    <h1 class="fade-up fade-up-2 text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl" style="line-height:1.1">
+    <h1 class="fade-up fade-up-2 text-4xl font-black tracking-tight text-white lg:text-5xl xl:text-6xl" style="line-height:1.1">
       Monte Carlo<br>
       <span class="bg-gradient-to-r from-teal-300 via-teal-400 to-indigo-300 bg-clip-text text-transparent">SIP outcomes,</span><br>
       after tax.
     </h1>
 
-    <p class="fade-up fade-up-3 mt-6 max-w-xl text-base leading-7 text-slate-400 sm:text-lg">
+    <p class="fade-up fade-up-3 mt-6 max-w-xl text-base leading-7 text-slate-400">
       Enter your monthly SIP, expected inflation &amp; return. We sample 1 lakh return and inflation paths, apply equity exit tax, and show the full distribution.
     </p>
 
-    <div class="fade-up fade-up-4 mt-8 grid gap-3 sm:grid-cols-3">
-      <div class="group rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur transition hover:bg-white/8 hover:border-white/15">
+    <div class="fade-up fade-up-4 mt-8 grid gap-3 grid-cols-3">
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Return noise</p>
-        <p class="mt-2 text-2xl font-black text-white">± 3%</p>
+        <p class="mt-2 text-xl font-black text-white">± 3%</p>
         <p class="mt-1 text-xs text-slate-500">annual std dev</p>
       </div>
-      <div class="group rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur transition hover:bg-white/8 hover:border-white/15">
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Inflation noise</p>
-        <p class="mt-2 text-2xl font-black text-white">± 3%</p>
+        <p class="mt-2 text-xl font-black text-white">± 3%</p>
         <p class="mt-1 text-xs text-slate-500">annual std dev</p>
       </div>
-      <div class="group rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur transition hover:bg-white/8 hover:border-white/15">
+      <div class="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">SIP style</p>
-        <p class="mt-2 text-2xl font-black text-white">Fixed</p>
+        <p class="mt-2 text-xl font-black text-white" id="sip-style-badge">Step-up</p>
         <p class="mt-1 text-xs text-slate-500">monthly amount</p>
       </div>
     </div>
   </div>
 
+  <!-- Mobile hero badge (visible on small screens only) -->
+  <div class="lg:hidden fade-up pt-2">
+    <div class="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-3 py-1.5 text-xs font-semibold text-teal-200">
+      <span class="flex h-1.5 w-1.5 rounded-full bg-teal-400"></span>
+      {{ "{:,}".format(simulation_count) }} NumPy Monte Carlo simulations
+    </div>
+    <h1 class="text-2xl font-black tracking-tight text-white sm:text-3xl">
+      SIP outcomes, <span class="bg-gradient-to-r from-teal-300 to-indigo-300 bg-clip-text text-transparent">after tax.</span>
+    </h1>
+  </div>
+
   <!-- Form card -->
-  <div class="fade-up fade-up-5 rounded-3xl border border-white/12 bg-white/[0.97] p-6 text-slate-950 shadow-[0_32px_80px_rgba(2,6,23,0.45),0_1px_0_rgba(255,255,255,0.9)_inset] sm:p-8">
-    <div class="mb-6 flex items-start justify-between gap-4">
+  <div class="fade-up fade-up-5 rounded-3xl border border-white/12 bg-white/[0.97] p-5 text-slate-950 shadow-[0_32px_80px_rgba(2,6,23,0.45),0_1px_0_rgba(255,255,255,0.9)_inset] sm:p-7">
+    <div class="mb-5 flex items-start justify-between gap-4">
       <div>
-        <h2 class="text-2xl font-black tracking-tight">Simulation inputs</h2>
-        <p class="mt-1.5 text-sm text-slate-500">All rates are annual percentages. Seed can be blank for a fresh run.</p>
+        <h2 class="text-xl font-black tracking-tight sm:text-2xl">Simulation inputs</h2>
+        <p class="mt-1 text-xs text-slate-500 sm:text-sm">All rates are annual percentages. Seed can be blank for a fresh run.</p>
       </div>
-      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 ring-1 ring-teal-200">
-        <svg class="h-5 w-5 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 ring-1 ring-teal-200">
+        <svg class="h-4 w-4 text-teal-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
       </div>
     </div>
 
     {% if errors %}
-      <div class="mb-6 flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+      <div class="mb-5 flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
         <svg class="mt-0.5 h-4 w-4 shrink-0 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/></svg>
         <div class="text-sm font-medium text-rose-800">
           {% for error in errors %}<p>{{ error }}</p>{% endfor %}
@@ -60,55 +71,89 @@
       </div>
     {% endif %}
 
-    <form action="/simulate" method="post" class="grid gap-5">
-      <label class="grid gap-2">
-        <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Monthly SIP amount (₹)</span>
+    <form action="/simulate" method="post" class="grid gap-4">
+      <!-- Monthly SIP -->
+      <label class="grid gap-1.5">
+        <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Monthly SIP (₹)</span>
         <div class="relative">
           <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold text-slate-400">₹</span>
           <input
-            class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-8 pr-4 text-lg font-bold text-slate-900 transition placeholder:text-slate-300 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.15)] focus:outline-none"
+            class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-8 pr-4 text-lg font-bold text-slate-900"
             type="number" min="100" step="100" name="monthly_sip" value="{{ form.monthly_sip }}" required>
         </div>
       </label>
 
-      <div class="grid gap-5 sm:grid-cols-2">
-        <label class="grid gap-2">
-          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Investment years</span>
+      <!-- Years + Seed -->
+      <div class="grid gap-4 grid-cols-2">
+        <label class="grid gap-1.5">
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Years</span>
           <input
-            class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-bold text-slate-900 transition placeholder:text-slate-300 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.15)] focus:outline-none"
+            class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-bold text-slate-900"
             type="number" min="1" max="60" step="1" name="years" value="{{ form.years }}" required>
         </label>
-        <label class="grid gap-2">
-          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Seed <span class="font-normal normal-case tracking-normal text-slate-400">(optional)</span></span>
+        <label class="grid gap-1.5">
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Seed <span class="font-normal normal-case tracking-normal text-slate-400">(opt)</span></span>
           <input
-            class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-bold text-slate-900 transition placeholder:text-slate-300 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.15)] focus:outline-none"
+            class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-lg font-bold text-slate-900"
             type="number" step="1" name="seed" value="{{ form.seed }}" placeholder="random">
         </label>
       </div>
 
-      <div class="grid gap-5 sm:grid-cols-2">
-        <label class="grid gap-2">
-          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Expected inflation %</span>
+      <!-- Inflation + Return -->
+      <div class="grid gap-4 grid-cols-2">
+        <label class="grid gap-1.5">
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Inflation %</span>
           <div class="relative">
             <input
-              class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-8 text-lg font-bold text-slate-900 transition placeholder:text-slate-300 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.15)] focus:outline-none"
+              class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-7 text-lg font-bold text-slate-900"
               type="number" min="-98" step="0.1" name="expected_inflation_rate" value="{{ form.expected_inflation_rate }}" required>
-            <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">%</span>
+            <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">%</span>
           </div>
         </label>
-        <label class="grid gap-2">
-          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Expected return %</span>
+        <label class="grid gap-1.5">
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Return %</span>
           <div class="relative">
             <input
-              class="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-8 text-lg font-bold text-slate-900 transition placeholder:text-slate-300 hover:border-slate-300 focus:border-teal-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(20,184,166,0.15)] focus:outline-none"
+              class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-4 pr-7 text-lg font-bold text-slate-900"
               type="number" min="-98" step="0.1" name="expected_return_rate" value="{{ form.expected_return_rate }}" required>
-            <span class="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">%</span>
+            <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">%</span>
           </div>
         </label>
       </div>
 
+      <!-- Step-up SIP toggle -->
+      <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+        <label class="flex cursor-pointer items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-bold text-slate-800">Annual step-up SIP</p>
+            <p class="mt-0.5 text-xs text-slate-500">Increase SIP by a fixed % every year</p>
+          </div>
+          <div class="relative">
+            <input type="checkbox" name="step_up_enabled" id="step-up-toggle" class="sr-only"
+              {% if form.step_up_enabled %}checked{% endif %}
+              onchange="toggleStepUp(this)">
+            <div id="toggle-track" class="h-6 w-11 rounded-full transition-colors duration-200 {% if form.step_up_enabled %}bg-teal-500{% else %}bg-slate-300{% endif %}"></div>
+            <div id="toggle-thumb" class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 {% if form.step_up_enabled %}translate-x-5{% else %}translate-x-0.5{% endif %}"></div>
+          </div>
+        </label>
+
+        <div id="step-up-field" class="{% if not form.step_up_enabled %}hidden{% endif %} mt-3 border-t border-slate-200 pt-3">
+          <label class="grid gap-1.5">
+            <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Annual step-up rate</span>
+            <div class="relative">
+              <input
+                class="input-field w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-4 pr-7 text-base font-bold text-slate-900"
+                type="number" min="0" max="100" step="0.5" name="step_up_rate"
+                value="{{ form.step_up_rate if form.step_up_rate else 10 }}"
+                id="step-up-rate-input">
+              <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">%</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
       <button
-        class="btn-sim mt-2 flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-500 px-5 py-4 text-base font-black text-slate-950 shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition hover:from-teal-300 hover:to-teal-400 hover:shadow-[0_12px_32px_rgba(20,184,166,0.45)] active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-teal-300"
+        class="btn-sim mt-1 flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-500 px-5 py-4 text-base font-black text-slate-950 shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition hover:from-teal-300 hover:to-teal-400 active:scale-[0.98] focus:outline-none focus:ring-4 focus:ring-teal-300"
         type="submit">
         <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
         Run simulation
@@ -116,4 +161,25 @@
     </form>
   </div>
 </section>
+
+<script>
+  function toggleStepUp(checkbox) {
+    const field = document.getElementById('step-up-field');
+    const track = document.getElementById('toggle-track');
+    const thumb = document.getElementById('toggle-thumb');
+    const badge = document.getElementById('sip-style-badge');
+
+    if (checkbox.checked) {
+      field.classList.remove('hidden');
+      track.classList.replace('bg-slate-300', 'bg-teal-500');
+      thumb.classList.replace('translate-x-0.5', 'translate-x-5');
+      if (badge) badge.textContent = 'Step-up';
+    } else {
+      field.classList.add('hidden');
+      track.classList.replace('bg-teal-500', 'bg-slate-300');
+      thumb.classList.replace('translate-x-5', 'translate-x-0.5');
+      if (badge) badge.textContent = 'Fixed';
+    }
+  }
+</script>
 {% endblock %}

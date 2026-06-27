@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
@@ -24,6 +24,7 @@ class SimulationInputs:
     expected_return_rate: float
     seed: int | None = None
     simulations: int = SIMULATION_COUNT
+    step_up_rate: float = 0.0          # annual % increase in SIP (0 = flat)
 
 
 @dataclass(frozen=True)
@@ -39,6 +40,8 @@ class SimulationResult:
     seed: int | None
     summary: dict[str, float]
     real_summary: dict[str, float]
+    step_up_rate: float = 0.0
+    yearly_sip_schedule: list[dict] = field(default_factory=list)
 
 
 def validate_inputs(inputs: SimulationInputs) -> list[str]:
@@ -57,7 +60,37 @@ def validate_inputs(inputs: SimulationInputs) -> list[str]:
         errors.append("Expected inflation must be greater than -99%.")
     if inputs.expected_return_rate <= -99:
         errors.append("Expected return must be greater than -99%.")
+    if inputs.step_up_rate < 0 or inputs.step_up_rate > 100:
+        errors.append("Step-up rate must be between 0% and 100%.")
     return errors
+
+
+def build_monthly_sip_amounts(
+    monthly_sip: float,
+    years: int,
+    step_up_rate: float,
+) -> NDArray[np.float64]:
+    """Return an array of shape (months,) with the SIP amount for each month."""
+    yearly_amounts = [
+        monthly_sip * (1 + step_up_rate / 100) ** year
+        for year in range(years)
+    ]
+    return np.repeat(yearly_amounts, 12).astype(np.float64)
+
+
+def build_yearly_sip_schedule(
+    monthly_sip: float,
+    years: int,
+    step_up_rate: float,
+) -> list[dict]:
+    return [
+        {
+            "year": year + 1,
+            "monthly_sip": round(monthly_sip * (1 + step_up_rate / 100) ** year, 2),
+            "annual_total": round(monthly_sip * (1 + step_up_rate / 100) ** year * 12, 2),
+        }
+        for year in range(years)
+    ]
 
 
 def run_simulation(inputs: SimulationInputs) -> SimulationResult:
@@ -67,6 +100,10 @@ def run_simulation(inputs: SimulationInputs) -> SimulationResult:
 
     months = inputs.years * 12
     rng = np.random.default_rng(inputs.seed)
+
+    monthly_sip_amounts = build_monthly_sip_amounts(
+        inputs.monthly_sip, inputs.years, inputs.step_up_rate
+    )
 
     final_before_tax = np.empty(inputs.simulations, dtype=np.float64)
     final_after_tax = np.empty(inputs.simulations, dtype=np.float64)
@@ -81,13 +118,21 @@ def run_simulation(inputs: SimulationInputs) -> SimulationResult:
             rng,
             chunk_size,
             months,
+            monthly_sip_amounts,
         )
         final_before_tax[start:end] = before_tax
         final_after_tax[start:end] = after_tax
         real_after_tax[start:end] = real_values
         monthly_after_tax_paths[start:end] = monthly_paths.astype(np.float32)
-    total_invested = inputs.monthly_sip * months
-    principal_path = inputs.monthly_sip * np.arange(1, months + 1, dtype=np.float64)
+
+    total_invested = float(monthly_sip_amounts.sum())
+    principal_path = np.cumsum(monthly_sip_amounts)
+
+    yearly_schedule = (
+        build_yearly_sip_schedule(inputs.monthly_sip, inputs.years, inputs.step_up_rate)
+        if inputs.step_up_rate > 0
+        else []
+    )
 
     return SimulationResult(
         final_values_after_tax=final_after_tax,
@@ -101,6 +146,8 @@ def run_simulation(inputs: SimulationInputs) -> SimulationResult:
         seed=inputs.seed,
         summary=build_summary(final_after_tax),
         real_summary=build_summary(real_after_tax),
+        step_up_rate=inputs.step_up_rate,
+        yearly_sip_schedule=yearly_schedule,
     )
 
 
@@ -109,6 +156,7 @@ def simulate_chunk(
     rng: np.random.Generator,
     chunk_size: int,
     months: int,
+    monthly_sip_amounts: NDArray[np.float64],
 ) -> tuple[
     NDArray[np.float64],
     NDArray[np.float64],
@@ -130,17 +178,16 @@ def simulate_chunk(
 
     monthly_returns = np.repeat((1 + annual_returns) ** (1 / 12) - 1, 12, axis=1)
     monthly_after_tax_paths = build_monthly_after_tax_paths(
-        monthly_sip=inputs.monthly_sip,
+        monthly_sip_amounts=monthly_sip_amounts,
         monthly_returns=monthly_returns,
     )
     growth_factors = np.cumprod(1 + monthly_returns, axis=1)
     terminal_factor = growth_factors[:, -1]
 
-    # SIP contributions are assumed to be invested at the beginning of each month.
     value_per_deposit = terminal_factor[:, None] / growth_factors
-    before_tax = inputs.monthly_sip * value_per_deposit.sum(axis=1)
+    before_tax = (monthly_sip_amounts[None, :] * value_per_deposit).sum(axis=1)
     after_tax = apply_exit_tax(
-        monthly_sip=inputs.monthly_sip,
+        monthly_sip_amounts=monthly_sip_amounts,
         value_per_deposit=value_per_deposit,
         months=months,
     )
@@ -151,7 +198,7 @@ def simulate_chunk(
 
 
 def build_monthly_after_tax_paths(
-    monthly_sip: float,
+    monthly_sip_amounts: NDArray[np.float64],
     monthly_returns: NDArray[np.float64],
 ) -> NDArray[np.float64]:
     chunk_size, months = monthly_returns.shape
@@ -159,12 +206,14 @@ def build_monthly_after_tax_paths(
     after_tax_paths = np.empty((chunk_size, months), dtype=np.float64)
 
     for month_index in range(months):
+        sip = monthly_sip_amounts[month_index]
         if month_index > 0:
             lot_values[:, :month_index] *= 1 + monthly_returns[:, month_index, None]
-        lot_values[:, month_index] = monthly_sip
+        lot_values[:, month_index] = sip
 
         active_values = lot_values[:, : month_index + 1]
-        gains = np.maximum(active_values - monthly_sip, 0)
+        cost_bases = monthly_sip_amounts[: month_index + 1]
+        gains = np.maximum(active_values - cost_bases[None, :], 0)
         ages_at_exit = month_index + 1 - np.arange(month_index + 1)
         long_term_mask = ages_at_exit > LTCG_MONTH_CUTOFF
 
@@ -196,12 +245,13 @@ def build_monthly_path_summary(
 
 
 def apply_exit_tax(
-    monthly_sip: float,
+    monthly_sip_amounts: NDArray[np.float64],
     value_per_deposit: NDArray[np.float64],
     months: int,
 ) -> NDArray[np.float64]:
-    contribution_values = monthly_sip * value_per_deposit
-    gains = np.maximum(contribution_values - monthly_sip, 0)
+    contribution_values = value_per_deposit * monthly_sip_amounts[None, :]
+    cost_basis = monthly_sip_amounts[None, :]
+    gains = np.maximum(contribution_values - cost_basis, 0)
 
     ages_at_exit = months - np.arange(months)
     long_term_mask = ages_at_exit > LTCG_MONTH_CUTOFF

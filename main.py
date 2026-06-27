@@ -24,6 +24,8 @@ DEFAULT_FORM = {
     "expected_inflation_rate": 8,
     "expected_return_rate": 10,
     "seed": 42,
+    "step_up_rate": 10,
+    "step_up_enabled": True,
 }
 
 
@@ -48,21 +50,26 @@ async def simulate_post(
     expected_inflation_rate: Annotated[float, Form()],
     expected_return_rate: Annotated[float, Form()],
     seed: Annotated[str, Form()] = "",
+    step_up_enabled: Annotated[str, Form()] = "",
+    step_up_rate: Annotated[float, Form()] = 0.0,
 ) -> HTMLResponse:
     parsed_seed = parse_seed(seed)
+    is_step_up = step_up_enabled == "on"
+    effective_step_up = step_up_rate if is_step_up else 0.0
+
     form = {
         "monthly_sip": monthly_sip,
         "years": years,
         "expected_inflation_rate": expected_inflation_rate,
         "expected_return_rate": expected_return_rate,
         "seed": seed,
+        "step_up_rate": step_up_rate,
+        "step_up_enabled": is_step_up,
     }
 
     if parsed_seed == "invalid":
         return render_form_with_errors(
-            request,
-            form,
-            ["Seed must be a whole number or left blank."],
+            request, form, ["Seed must be a whole number or left blank."]
         )
 
     inputs = SimulationInputs(
@@ -71,17 +78,18 @@ async def simulate_post(
         expected_inflation_rate=expected_inflation_rate,
         expected_return_rate=expected_return_rate,
         seed=parsed_seed,
+        step_up_rate=effective_step_up,
     )
     errors = validate_inputs(inputs)
     if errors:
         return render_form_with_errors(request, form, errors)
 
-    # Redirect to GET so the URL is shareable
     params: dict[str, str] = {
         "monthly_sip": str(monthly_sip),
         "years": str(years),
         "expected_inflation_rate": str(expected_inflation_rate),
         "expected_return_rate": str(expected_return_rate),
+        "step_up_rate": str(effective_step_up),
     }
     if seed.strip():
         params["seed"] = seed.strip()
@@ -96,6 +104,7 @@ async def simulate_get(
     expected_inflation_rate: Annotated[float, Query()],
     expected_return_rate: Annotated[float, Query()],
     seed: Annotated[Optional[str], Query()] = None,
+    step_up_rate: Annotated[float, Query()] = 0.0,
 ) -> HTMLResponse:
     seed_str = seed or ""
     parsed_seed = parse_seed(seed_str)
@@ -105,13 +114,13 @@ async def simulate_get(
         "expected_inflation_rate": expected_inflation_rate,
         "expected_return_rate": expected_return_rate,
         "seed": seed_str,
+        "step_up_rate": step_up_rate,
+        "step_up_enabled": step_up_rate > 0,
     }
 
     if parsed_seed == "invalid":
         return render_form_with_errors(
-            request,
-            form,
-            ["Seed must be a whole number or left blank."],
+            request, form, ["Seed must be a whole number or left blank."]
         )
 
     inputs = SimulationInputs(
@@ -120,6 +129,7 @@ async def simulate_get(
         expected_inflation_rate=expected_inflation_rate,
         expected_return_rate=expected_return_rate,
         seed=parsed_seed,
+        step_up_rate=step_up_rate,
     )
     errors = validate_inputs(inputs)
     if errors:
@@ -177,7 +187,7 @@ def parse_seed(seed: str) -> int | None | str:
 
 def render_form_with_errors(
     request: Request,
-    form: dict[str, float | int | str],
+    form: dict[str, float | int | str | bool],
     errors: list[str],
 ) -> HTMLResponse:
     return templates.TemplateResponse(
@@ -230,15 +240,15 @@ def build_histogram(
 
     figure.update_layout(
         template="plotly_white",
-        margin={"l": 56, "r": 28, "t": 58, "b": 54},
-        height=520,
+        margin={"l": 40, "r": 16, "t": 48, "b": 40},
+        height=400,
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(255,255,255,0.96)",
         bargap=0.02,
-        title={"text": title, "x": 0.01, "xanchor": "left"},
+        title={"text": title, "x": 0.01, "xanchor": "left", "font": {"size": 14}},
         xaxis_title=xaxis_title,
         yaxis_title="Simulation count",
-        font={"family": "Inter, ui-sans-serif, system-ui"},
+        font={"family": "Inter, ui-sans-serif, system-ui", "size": 11},
     )
     return to_html(
         figure,
@@ -353,18 +363,19 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
             ),
         )
     )
+
     figure.update_layout(
         template="plotly_white",
-        margin={"l": 56, "r": 28, "t": 58, "b": 54},
-        height=560,
-        title={"text": "Monthly after-tax corpus path", "x": 0.01, "xanchor": "left"},
+        margin={"l": 40, "r": 16, "t": 48, "b": 40},
+        height=420,
+        title={"text": "Monthly after-tax corpus path", "x": 0.01, "xanchor": "left", "font": {"size": 14}},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(255,255,255,0.96)",
         xaxis_title="Investment year",
         yaxis_title="After-tax corpus",
         hovermode="closest",
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
-        font={"family": "Inter, ui-sans-serif, system-ui"},
+        font={"family": "Inter, ui-sans-serif, system-ui", "size": 11},
     )
     return to_html(
         figure,
