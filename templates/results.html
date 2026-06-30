@@ -51,7 +51,7 @@
       <h2 class="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">SIP breakdown by year</h2>
     </div>
     <div class="overflow-x-auto rounded-xl border border-slate-700/60">
-      <table class="w-full text-left text-xs sm:text-sm">
+      <table class="w-full min-w-[480px] text-left text-xs sm:text-sm">
         <thead>
           <tr class="border-b border-slate-700/60 bg-slate-800/60 text-xs font-bold uppercase tracking-widest text-slate-400">
             <th class="px-3 py-2.5 sm:px-4">Year</th>
@@ -94,7 +94,7 @@
   <!-- Nominal chart + sidebar -->
   <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
     <div class="chart-wrap">{{ nominal_histogram_html | safe }}</div>
-    <aside class="grid gap-3 grid-cols-3 xl:grid-cols-1">
+    <aside class="grid gap-3 grid-cols-1 sm:grid-cols-3 xl:grid-cols-1">
       <div class="stat-card">
         <p class="text-xs font-bold uppercase tracking-widest text-slate-500">Base monthly SIP</p>
         <p class="mt-2 text-lg font-black tracking-tight sm:text-xl">Rs {{ "{:,.0f}".format(result.monthly_sip) }}</p>
@@ -152,7 +152,7 @@
       <p class="section-label text-amber-300">Future after net tax</p>
       <h2 class="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">Net capital gains after tax</h2>
     </div>
-    <div class="grid gap-2 grid-cols-4">
+    <div class="grid gap-2 grid-cols-2 sm:grid-cols-4">
       {% for card in net_gains_cards %}
         <article class="metric-card tone-{{ card.tone }}">
           <p class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ card.label }}</p>
@@ -176,7 +176,7 @@
       <p class="section-label text-violet-300">Today's worth after net tax</p>
       <h2 class="mt-1 text-lg font-black tracking-tight text-white sm:text-xl">Inflation-adjusted net capital gains</h2>
     </div>
-    <div class="grid gap-2 grid-cols-4">
+    <div class="grid gap-2 grid-cols-2 sm:grid-cols-4">
       {% for card in real_net_gains_cards %}
         <article class="metric-card tone-{{ card.tone }}">
           <p class="text-xs font-bold uppercase tracking-widest text-slate-500">{{ card.label }}</p>
@@ -219,11 +219,17 @@
   }
 
   function resizeChartsForMobile() {
-    if (window.innerWidth < 640 && typeof Plotly !== 'undefined') {
-      document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
-        Plotly.relayout(el, { height: 280, margin: { l: 32, r: 8, t: 36, b: 32 } });
-      });
-    }
+    if (typeof Plotly === 'undefined') return;
+    var isMobile = window.innerWidth < 640;
+    var isTiny  = window.innerWidth < 420;
+    document.querySelectorAll('.js-plotly-plot').forEach(function(el) {
+      if (isMobile) {
+        Plotly.relayout(el, {
+          height: isTiny ? 220 : 250,
+          margin: { l: isTiny ? 28 : 32, r: 6, t: 32, b: isTiny ? 40 : 32 }
+        });
+      }
+    });
   }
   window.addEventListener('load', resizeChartsForMobile);
   window.addEventListener('resize', resizeChartsForMobile);

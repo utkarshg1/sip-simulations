@@ -29,8 +29,8 @@
           <div class="ring-dot"></div>
         </div>
         <div>
-          <p class="sim-title">Crunching numbers <span class="dots"><span></span><span></span><span></span></span></p>
-          <p class="sim-subtitle">Running 1,00,000 Monte Carlo simulations</p>
+          <p id="sim-title-text" class="sim-title">Crunching numbers <span class="dots"><span></span><span></span><span></span></span></p>
+          <p id="sim-subtitle-text" class="sim-subtitle">Running 1,00,000 Monte Carlo simulations</p>
         </div>
         <div class="sim-progress-bar">
           <div class="sim-progress-fill"></div>
@@ -44,9 +44,9 @@
       <!-- Subtle grid overlay -->
       <div class="absolute inset-0 opacity-[0.025]" style="background-image:linear-gradient(rgba(255,255,255,0.8) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.8) 1px,transparent 1px);background-size:40px 40px"></div>
 
-      <div class="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 py-8 sm:px-8 lg:px-10">
+      <div class="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 sm:px-8 lg:px-10">
         <!-- Header -->
-        <header class="mb-8 flex items-center justify-between">
+        <header class="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
           <a href="/" class="flex items-center gap-2.5 group">
             <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-500/20 ring-1 ring-teal-400/30 transition group-hover:bg-teal-500/30">
               <svg class="h-4 w-4 text-teal-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
@@ -63,15 +63,9 @@
     </main>
 
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const form = document.querySelector('form[action="/simulate"]');
-        const overlay = document.getElementById('sim-overlay');
-        if (form && overlay) {
-          form.addEventListener('submit', function () {
-            overlay.classList.add('active');
-          });
-        }
-      });
+      window._simOverlay = document.getElementById('sim-overlay');
+      window._simTitle = document.getElementById('sim-title-text');
+      window._simSubtitle = document.getElementById('sim-subtitle-text');
     </script>
   </body>
 </html>

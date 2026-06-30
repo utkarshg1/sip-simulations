@@ -116,3 +116,43 @@ def test_step_up_results_show_stepup_info_even_when_zero():
     assert response.status_code == 200
     assert "Annual top-up" in response.text
     assert "Monthly cap" in response.text
+
+
+def test_check_cache_returns_false_without_db():
+    response = client.get(
+        "/check-cache",
+        params={
+            "monthly_sip": "10000",
+            "years": "2",
+            "expected_inflation_rate": "6",
+            "expected_return_rate": "12",
+            "seed": "123",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"cached": False}
+
+
+def test_check_cache_invalid_input_returns_false():
+    response = client.get(
+        "/check-cache",
+        params={
+            "monthly_sip": "-1",
+            "years": "2",
+            "expected_inflation_rate": "6",
+            "expected_return_rate": "12",
+            "seed": "123",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data == {"cached": False}
+
+
+def test_check_cache_missing_param_returns_422():
+    response = client.get("/check-cache", params={"monthly_sip": "10000"})
+
+    assert response.status_code == 422

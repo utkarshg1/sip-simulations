@@ -179,11 +179,47 @@ body { font-family: "Inter", ui-sans-serif, system-ui, sans-serif; }
   .chart-wrap .js-plotly-plot,
   .chart-wrap .plot-container,
   .chart-wrap .svg-container {
-    max-height: 280px !important;
-    height: 280px !important;
+    max-height: 250px !important;
+    height: 250px !important;
   }
   .chart-wrap .main-svg {
-    height: 280px !important;
+    height: 250px !important;
+  }
+}
+
+/* ── Mobile global overrides ── */
+@media (max-width: 639px) {
+  .metric-card {
+    min-height: 72px;
+    padding: 0.7rem 0.8rem;
+  }
+  .metric-card p.text-lg {
+    font-size: 1rem !important;
+  }
+  .stat-card {
+    padding: 0.8rem 0.9rem;
+  }
+  .stat-card p.text-lg {
+    font-size: 0.95rem !important;
+  }
+  .section-label {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .metric-card {
+    min-height: 64px;
+    padding: 0.5rem 0.6rem;
+  }
+  .metric-card p.text-lg {
+    font-size: 0.85rem !important;
+  }
+  .metric-card p.text-xs {
+    font-size: 0.6rem !important;
+  }
+  .stat-card {
+    padding: 0.6rem 0.7rem;
   }
 }
 

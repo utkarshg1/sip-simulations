@@ -1,8 +1,16 @@
 # Monte Carlo SIP Simulator
 
-A high-performance web app that runs **100,000 NumPy-vectorised Monte Carlo simulations** to show the full distribution of after-tax outcomes for a Systematic Investment Plan (SIP). Built with FastAPI, Jinja2, and Plotly.
+A high-performance web app that runs **100,000 NumPy-vectorised Monte Carlo simulations** to show the full distribution of after-tax outcomes for a Systematic Investment Plan (SIP). Built with FastAPI, Jinja2, Plotly, and optional PostgreSQL caching.
 
 🌐 **Live demo:** [sip-simulations.onrender.com](https://sip-simulations.onrender.com/)
+
+---
+
+## What's new in v2.0
+
+- **PostgreSQL caching** — simulation results are cached by parameter hash. Repeated runs with the same inputs load instantly without re-simulating.
+- **Cache-aware loading animation** — before each simulation, the app checks the cache and shows "Cache hit ✓ / Loading cached results…" or "Crunching numbers / Running 1,00,000 simulations…" accordingly.
+- **Mobile responsiveness** — fully polished layout for small screens, including chart sizing, card stacking, and horizontal scroll for tables.
 
 ---
 
@@ -51,7 +59,7 @@ When a top‑up is specified, a **yearly schedule table** appears on the results
 ## Tech stack
 
 | Layer | Technology |
-|---|---|
+|---|---|---|
 | Web framework | FastAPI |
 | Templating | Jinja2 |
 | Simulation engine | NumPy (vectorised, chunked) |
@@ -59,6 +67,8 @@ When a top‑up is specified, a **yearly schedule table** appears on the results
 | Styling | Tailwind CSS + custom CSS |
 | Server | Uvicorn |
 | Package manager | uv |
+| Caching (opt.) | PostgreSQL + asyncpg |
+| Cache check | `/check-cache` endpoint — instant cache lookup on form submit |
 
 ---
 
@@ -69,6 +79,10 @@ When a top‑up is specified, a **yearly schedule table** appears on the results
 ```bash
 # Install dependencies
 uv sync
+
+# (Optional) Enable PostgreSQL caching — create .env from example
+cp .env.example .env
+# Edit .env with your real DATABASE_URL
 
 # Start the dev server
 uv run uvicorn main:app --reload --host 0.0.0.0 --port 5000
@@ -81,12 +95,15 @@ Open `http://localhost:5000` in your browser.
 ## Running with Docker
 
 ```bash
+# Create .env first (required for Docker — template provided)
+cp .env.example .env
+
 # Build and start
 docker compose up --build
 
-# Or build and run manually
+# Or build and run manually (inject .env at runtime)
 docker build -t sip-simulator .
-docker run -p 5000:5000 sip-simulator
+docker run -p 5000:5000 --env-file .env sip-simulator
 ```
 
 Open `http://localhost:5000` in your browser.
@@ -126,19 +143,46 @@ Use the **Copy link** button on any results page to copy the URL and share it. A
 .
 ├── main.py           # FastAPI app, routes, Plotly chart builders
 ├── simulation.py     # NumPy Monte Carlo engine (Fixed + Step-up SIP)
+├── db.py             # PostgreSQL caching (asyncpg, hash-based result cache)
 ├── templates/
 │   ├── base.html     # Shared layout, loading overlay
 │   ├── index.html    # Input form with top-up, cap, rates, and seed fields
 │   └── results.html  # Results page with histograms, summary cards, yearly schedule, path chart
 ├── static/
-│   └── styles.css    # Custom styles and animations
+│   └── styles.css    # Custom styles and animations (mobile-responsive)
 ├── tests/
 │   ├── test_app.py
 │   └── test_simulation.py
 ├── Dockerfile
 ├── docker-compose.yml
+├── .env.example      # Template for DATABASE_URL
 └── pyproject.toml
 ```
+
+---
+
+## PostgreSQL caching (optional)
+
+When a `DATABASE_URL` environment variable is present, the app connects to PostgreSQL and caches simulation results. Each unique set of input parameters is hashed (SHA-256) and used as a cache key. On subsequent requests with the same parameters, the pre-rendered results are served directly from the cache — skipping the 100,000‑simulation run entirely.
+
+Before each simulation, the form calls the `/check-cache` endpoint with the same parameters and shows one of two loading states:
+
+| State | Overlay text |
+|-------|-------------|
+| **Cache hit** | "Cache hit ✓ — Loading cached results…" |
+| **Cache miss** | "Crunching numbers — Running 1,00,000 Monte Carlo simulations" |
+
+**No Docker‑ised Postgres** — point it at your own instance:
+
+```bash
+# Create .env from the example and fill in your connection string
+cp .env.example .env
+
+# The app reads DATABASE_URL at startup
+DATABASE_URL=postgresql://user:password@host:5432/sip_simulation
+```
+
+The cache table (`result_cache`) is created automatically on first start. If the env var is absent, the app works exactly as before — no database required.
 
 ---
 

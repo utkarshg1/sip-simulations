@@ -20,7 +20,7 @@
       Enter your monthly SIP, expected inflation &amp; return. We sample 1 lakh return and inflation paths, apply equity exit tax, and show the full distribution.
     </p>
 
-    <div class="fade-up fade-up-4 mt-8 grid gap-3 grid-cols-3">
+    <div class="fade-up fade-up-4 mt-8 grid gap-3 grid-cols-1 sm:grid-cols-3">
       <div class="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
         <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Return noise</p>
         <p class="mt-2 text-xl font-black text-white">± 3%</p>
@@ -51,7 +51,7 @@
   </div>
 
   <!-- Form card -->
-  <div class="fade-up fade-up-5 rounded-3xl border border-white/12 bg-white/[0.97] p-5 text-slate-950 shadow-[0_32px_80px_rgba(2,6,23,0.45),0_1px_0_rgba(255,255,255,0.9)_inset] sm:p-7">
+  <div class="fade-up fade-up-5 rounded-3xl border border-white/12 bg-white/[0.97] p-4 text-slate-950 shadow-[0_32px_80px_rgba(2,6,23,0.45),0_1px_0_rgba(255,255,255,0.9)_inset] sm:p-7">
 
     {% if errors %}
       <div class="mb-5 flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
@@ -75,7 +75,7 @@
       </label>
 
       <!-- Top-up + Cap -->
-      <div class="grid gap-4 grid-cols-2">
+      <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <label class="grid gap-1.5">
           <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Annual top-up (₹)</span>
           <div class="relative">
@@ -102,7 +102,7 @@
       </div>
 
       <!-- Years + Seed -->
-      <div class="grid gap-4 grid-cols-2">
+      <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <label class="grid gap-1.5">
           <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Years</span>
           <input
@@ -118,7 +118,7 @@
       </div>
 
       <!-- Inflation + Return -->
-      <div class="grid gap-4 grid-cols-2">
+      <div class="grid gap-4 grid-cols-1 sm:grid-cols-2">
         <label class="grid gap-1.5">
           <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Inflation %</span>
           <div class="relative">
@@ -158,5 +158,37 @@
       if (!this.checked) capInput.value = '0';
     });
   }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('form[action="/simulate"]');
+    if (!form || !window._simOverlay) return;
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      window._simOverlay.classList.add('active');
+      window._simTitle.textContent = 'Checking cache ';
+      window._simSubtitle.textContent = 'Looking up previous results\u2026';
+
+      var params = new URLSearchParams(new FormData(form));
+      fetch('/check-cache?' + params.toString())
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.cached) {
+            window._simTitle.textContent = 'Cache hit ';
+            window._simSubtitle.textContent = 'Loading cached results\u2026';
+          } else {
+            window._simTitle.innerHTML = 'Crunching numbers <span class="dots"><span></span><span></span><span></span></span>';
+            window._simSubtitle.textContent = 'Running 1,00,000 Monte Carlo simulations';
+          }
+        })
+        .catch(function () {
+          window._simTitle.innerHTML = 'Crunching numbers <span class="dots"><span></span><span></span><span></span></span>';
+          window._simSubtitle.textContent = 'Running 1,00,000 Monte Carlo simulations';
+        })
+        .finally(function () {
+          form.submit();
+        });
+    });
+  });
 </script>
 {% endblock %}

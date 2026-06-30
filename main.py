@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from contextlib import asynccontextmanager
+from dataclasses import asdict
 from typing import Annotated, Optional
 from urllib.parse import urlencode
 
@@ -10,10 +13,18 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from plotly.io import to_html
 
+import db
 from simulation import SIMULATION_COUNT, SimulationInputs, run_simulation, validate_inputs
 
 
-app = FastAPI(title="Monte Carlo SIP Simulator")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await db.init_db()
+    yield
+    await db.close_db()
+
+
+app = FastAPI(title="Monte Carlo SIP Simulator", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -139,10 +150,34 @@ async def simulate_get(
     if errors:
         return render_form_with_errors(request, form, errors)
 
-    return _render_results(request, inputs, form)
+    return await _render_results(request, inputs, form)
 
 
-def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> HTMLResponse:
+async def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> HTMLResponse:
+    params_hash = db.compute_params_hash(inputs)
+
+    if db.is_connected():
+        cached = await db.get_cached_result(params_hash)
+        if cached:
+            result_data = json.loads(cached["result_json"])
+            return templates.TemplateResponse(
+                request,
+                "results.html",
+                {
+                    "form": form,
+                    "result": result_data["result"],
+                    "summary_cards": result_data["summary_cards"],
+                    "real_summary_cards": result_data["real_summary_cards"],
+                    "net_gains_cards": result_data["net_gains_cards"],
+                    "real_net_gains_cards": result_data["real_net_gains_cards"],
+                    "nominal_histogram_html": cached["nominal_histogram_html"],
+                    "real_histogram_html": cached["real_histogram_html"],
+                    "net_gains_histogram_html": cached["net_gains_histogram_html"],
+                    "real_net_gains_histogram_html": cached["real_net_gains_histogram_html"],
+                    "monthly_path_html": cached["monthly_path_html"],
+                },
+            )
+
     result = run_simulation(inputs)
     nominal_histogram_html = build_histogram(
         result.final_values_after_tax,
@@ -173,16 +208,46 @@ def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> H
     )
     monthly_path_html = build_monthly_path_chart(result.monthly_path)
 
+    summary_cards = build_summary_cards(result.summary)
+    real_summary_cards = build_summary_cards(result.real_summary)
+    net_gains_cards = build_compact_summary_cards(result.net_gains_summary)
+    real_net_gains_cards = build_compact_summary_cards(result.real_net_gains_summary)
+
+    if db.is_connected():
+        result_json = json.dumps({
+            "result": {
+                "monthly_sip": result.monthly_sip,
+                "years": result.years,
+                "simulations": result.simulations,
+                "seed": result.seed,
+                "total_invested": result.total_invested,
+                "step_up_top_up_amount": result.step_up_top_up_amount,
+                "step_up_cap_amount": result.step_up_cap_amount,
+                "yearly_schedule": result.yearly_schedule,
+            },
+            "summary_cards": summary_cards,
+            "real_summary_cards": real_summary_cards,
+            "net_gains_cards": net_gains_cards,
+            "real_net_gains_cards": real_net_gains_cards,
+        }, default=str)
+        params_json = json.dumps(asdict(inputs), default=str)
+        await db.set_cached_result(
+            params_hash, params_json, result_json,
+            nominal_histogram_html, real_histogram_html,
+            net_gains_histogram_html, real_net_gains_histogram_html,
+            monthly_path_html,
+        )
+
     return templates.TemplateResponse(
         request,
         "results.html",
         {
             "form": form,
             "result": result,
-            "summary_cards": build_summary_cards(result.summary),
-            "real_summary_cards": build_summary_cards(result.real_summary),
-            "net_gains_cards": build_compact_summary_cards(result.net_gains_summary),
-            "real_net_gains_cards": build_compact_summary_cards(result.real_net_gains_summary),
+            "summary_cards": summary_cards,
+            "real_summary_cards": real_summary_cards,
+            "net_gains_cards": net_gains_cards,
+            "real_net_gains_cards": real_net_gains_cards,
             "nominal_histogram_html": nominal_histogram_html,
             "real_histogram_html": real_histogram_html,
             "net_gains_histogram_html": net_gains_histogram_html,
@@ -193,8 +258,44 @@ def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> H
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+async def health() -> dict[str, str | bool]:
+    return {
+        "status": "ok",
+        "db_connected": db.is_connected(),
+    }
+
+
+@app.get("/check-cache")
+async def check_cache(
+    monthly_sip: Annotated[float, Query()],
+    years: Annotated[int, Query()],
+    expected_inflation_rate: Annotated[float, Query()],
+    expected_return_rate: Annotated[float, Query()],
+    seed: Annotated[Optional[str], Query()] = None,
+    step_up_top_up_amount: Annotated[float, Query()] = 0,
+    step_up_cap_amount: Annotated[float, Query()] = 0,
+) -> dict[str, bool]:
+    if not db.is_connected():
+        return {"cached": False}
+    seed_str = seed or ""
+    parsed_seed = parse_seed(seed_str)
+    if parsed_seed == "invalid":
+        return {"cached": False}
+    inputs = SimulationInputs(
+        monthly_sip=monthly_sip,
+        years=years,
+        expected_inflation_rate=expected_inflation_rate,
+        expected_return_rate=expected_return_rate,
+        step_up_top_up_amount=step_up_top_up_amount,
+        step_up_cap_amount=step_up_cap_amount,
+        seed=parsed_seed,
+    )
+    errors = validate_inputs(inputs)
+    if errors:
+        return {"cached": False}
+    params_hash = db.compute_params_hash(inputs)
+    cached = await db.get_cached_result(params_hash)
+    return {"cached": cached is not None}
 
 
 def parse_seed(seed: str) -> int | None | str:

@@ -10,3 +10,4 @@ tests/
 *.md
 .agents/
 .local/
+.env
