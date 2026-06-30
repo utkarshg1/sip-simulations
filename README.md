@@ -16,8 +16,9 @@ It samples 100,000 possible futures by varying annual returns and inflation arou
 
 - **Nominal maturity distribution** — future rupee value after exit tax, across all 100,000 simulations
 - **Inflation-adjusted distribution** — the same values discounted back to today's purchasing power
+- **Net capital gains distribution** — nominal and inflation-adjusted capital gains after tax
 - **Monthly corpus path chart** — how your portfolio grows year by year, showing the 2.5–97.5 and 25–75 percentile bands alongside the median and principal invested
-- **Summary statistics** — 2.5, 25, 50, 75, 97.5 percentile, IQR, average, and standard deviation for both nominal and real values
+- **Summary statistics** — 2.5, 25, 50, 75, 97.5 percentile, IQR, average, and standard deviation for nominal, real, and net gains values
 
 ---
 
@@ -25,12 +26,12 @@ It samples 100,000 possible futures by varying annual returns and inflation arou
 
 | Mode | Description |
 |---|---|
-| **Fixed SIP** | Same ₹ amount invested every month for the full duration |
-| **Step-up SIP** | SIP amount increases by a fixed % every year (1–50%), compounding contributions alongside returns |
+| **Fixed SIP** | Same ₹ amount invested every month for the full duration (top‑up = 0) |
+| **Step-up SIP** | SIP amount increases by a fixed ₹ amount each year, with an optional monthly cap |
 
-Switch between modes instantly using the segmented control on the form. On the results page, toggle between Fixed and Step-up views with a single click — all other inputs (years, return, inflation, seed) are preserved.
+All inputs are always visible — there is no mode toggle. The top‑up amount controls the annual increase; when set to 0 the SIP behaves as a fixed SIP. An optional **monthly cap** clamps the per‑month installment.
 
-The step-up schedule (year-by-year monthly amounts) is shown as a collapsible table on the results page when step-up mode is active.
+When a top‑up is specified, a **yearly schedule table** appears on the results page showing the monthly SIP, annual principal, and cumulative principal for each year.
 
 ---
 
@@ -38,11 +39,11 @@ The step-up schedule (year-by-year monthly amounts) is shown as a collapsible ta
 
 | Parameter | Detail |
 |---|---|
-| Simulations | 100,000 per run |
+| Simulations | 100,000 per run (processed in chunks of 10,000) |
 | Return model | Normal distribution centred on your expected return ± 3% annual std dev |
 | Inflation model | Normal distribution centred on your expected inflation ± 3% annual std dev |
 | Tax model | Simplified LTCG (12.5%) and STCG (20%) exit tax on equity mutual funds |
-| SIP style | Fixed (constant amount) or Step-up (annual % increase, 1–50%) |
+| SIP style | Fixed (constant amount) or Step-up (fixed ₹ annual top‑up + optional cap) |
 | Seed | Optional — set for reproducible results, leave blank for a fresh run |
 
 ---
@@ -53,7 +54,7 @@ The step-up schedule (year-by-year monthly amounts) is shown as a collapsible ta
 |---|---|
 | Web framework | FastAPI |
 | Templating | Jinja2 |
-| Simulation engine | NumPy (vectorised, no Python loops) |
+| Simulation engine | NumPy (vectorised, chunked) |
 | Charts | Plotly |
 | Styling | Tailwind CSS + custom CSS |
 | Server | Uvicorn |
@@ -105,11 +106,14 @@ uv run pytest
 Every simulation result has a unique URL containing all input parameters as query strings:
 
 ```
-# Fixed SIP
-/simulate?monthly_sip=15000&years=5&expected_inflation_rate=8&expected_return_rate=10&seed=42&step_up_rate=0
+# Fixed SIP (top‑up and cap both 0)
+/simulate?monthly_sip=15000&years=5&expected_inflation_rate=8&expected_return_rate=10&seed=42
 
-# Step-up SIP at 10% per year
-/simulate?monthly_sip=15000&years=5&expected_inflation_rate=8&expected_return_rate=10&seed=42&step_up_rate=10
+# Step-up SIP — ₹5,000/year top-up, no cap
+/simulate?monthly_sip=15000&years=5&expected_inflation_rate=8&expected_return_rate=10&seed=42&step_up_top_up_amount=5000
+
+# Step-up SIP with ₹50,000/month cap
+/simulate?monthly_sip=15000&years=10&expected_inflation_rate=6&expected_return_rate=12&seed=42&step_up_top_up_amount=5000&step_up_cap_amount=50000
 ```
 
 Use the **Copy link** button on any results page to copy the URL and share it. Anyone who opens the link sees exactly the same simulation.
@@ -120,14 +124,14 @@ Use the **Copy link** button on any results page to copy the URL and share it. A
 
 ```
 .
-├── main.py           # FastAPI app, routes, chart builders
+├── main.py           # FastAPI app, routes, Plotly chart builders
 ├── simulation.py     # NumPy Monte Carlo engine (Fixed + Step-up SIP)
 ├── templates/
 │   ├── base.html     # Shared layout, loading overlay
-│   ├── index.html    # Input form with Fixed/Step-up segmented control
-│   └── results.html  # Results page with charts, summary cards, mode toggle
+│   ├── index.html    # Input form with top-up, cap, rates, and seed fields
+│   └── results.html  # Results page with histograms, summary cards, yearly schedule, path chart
 ├── static/
-│   └── styles.css    # Custom styles, animations, slider, segmented control
+│   └── styles.css    # Custom styles and animations
 ├── tests/
 │   ├── test_app.py
 │   └── test_simulation.py
@@ -147,5 +151,5 @@ Use the **Copy link** button on any results page to copy the URL and share it. A
 | Expected inflation | 8% |
 | Expected return | 10% |
 | Seed | 42 |
-| SIP mode | Fixed |
-| Step-up rate | 10% (when step-up mode is selected) |
+| Annual top‑up | ₹0 (fixed SIP) |
+| Monthly cap | ₹0 (no limit, greyed out by default) |

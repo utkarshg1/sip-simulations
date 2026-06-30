@@ -24,8 +24,8 @@ DEFAULT_FORM = {
     "expected_inflation_rate": 8,
     "expected_return_rate": 10,
     "seed": 42,
-    "step_up_rate": 10,
-    "step_up_enabled": False,
+    "step_up_top_up_amount": 0,
+    "step_up_cap_amount": 0,
 }
 
 
@@ -50,12 +50,10 @@ async def simulate_post(
     expected_inflation_rate: Annotated[float, Form()],
     expected_return_rate: Annotated[float, Form()],
     seed: Annotated[str, Form()] = "",
-    step_up_enabled: Annotated[str, Form()] = "",
-    step_up_rate: Annotated[float, Form()] = 0.0,
+    step_up_top_up_amount: Annotated[float, Form()] = 0,
+    step_up_cap_amount: Annotated[float, Form()] = 0,
 ) -> HTMLResponse:
     parsed_seed = parse_seed(seed)
-    is_step_up = step_up_enabled == "on"
-    effective_step_up = step_up_rate if is_step_up else 0.0
 
     form = {
         "monthly_sip": monthly_sip,
@@ -63,8 +61,8 @@ async def simulate_post(
         "expected_inflation_rate": expected_inflation_rate,
         "expected_return_rate": expected_return_rate,
         "seed": seed,
-        "step_up_rate": step_up_rate,
-        "step_up_enabled": is_step_up,
+        "step_up_top_up_amount": step_up_top_up_amount,
+        "step_up_cap_amount": step_up_cap_amount,
     }
 
     if parsed_seed == "invalid":
@@ -77,8 +75,9 @@ async def simulate_post(
         years=years,
         expected_inflation_rate=expected_inflation_rate,
         expected_return_rate=expected_return_rate,
+        step_up_top_up_amount=step_up_top_up_amount,
+        step_up_cap_amount=step_up_cap_amount,
         seed=parsed_seed,
-        step_up_rate=effective_step_up,
     )
     errors = validate_inputs(inputs)
     if errors:
@@ -89,8 +88,11 @@ async def simulate_post(
         "years": str(years),
         "expected_inflation_rate": str(expected_inflation_rate),
         "expected_return_rate": str(expected_return_rate),
-        "step_up_rate": str(effective_step_up),
     }
+    if step_up_top_up_amount:
+        params["step_up_top_up_amount"] = str(step_up_top_up_amount)
+    if step_up_cap_amount:
+        params["step_up_cap_amount"] = str(step_up_cap_amount)
     if seed.strip():
         params["seed"] = seed.strip()
     return RedirectResponse(url=f"/simulate?{urlencode(params)}", status_code=303)
@@ -104,7 +106,8 @@ async def simulate_get(
     expected_inflation_rate: Annotated[float, Query()],
     expected_return_rate: Annotated[float, Query()],
     seed: Annotated[Optional[str], Query()] = None,
-    step_up_rate: Annotated[float, Query()] = 0.0,
+    step_up_top_up_amount: Annotated[float, Query()] = 0,
+    step_up_cap_amount: Annotated[float, Query()] = 0,
 ) -> HTMLResponse:
     seed_str = seed or ""
     parsed_seed = parse_seed(seed_str)
@@ -114,8 +117,8 @@ async def simulate_get(
         "expected_inflation_rate": expected_inflation_rate,
         "expected_return_rate": expected_return_rate,
         "seed": seed_str,
-        "step_up_rate": step_up_rate,
-        "step_up_enabled": step_up_rate > 0,
+        "step_up_top_up_amount": step_up_top_up_amount,
+        "step_up_cap_amount": step_up_cap_amount,
     }
 
     if parsed_seed == "invalid":
@@ -128,8 +131,9 @@ async def simulate_get(
         years=years,
         expected_inflation_rate=expected_inflation_rate,
         expected_return_rate=expected_return_rate,
+        step_up_top_up_amount=step_up_top_up_amount,
+        step_up_cap_amount=step_up_cap_amount,
         seed=parsed_seed,
-        step_up_rate=step_up_rate,
     )
     errors = validate_inputs(inputs)
     if errors:
@@ -153,6 +157,20 @@ def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> H
         xaxis_title="Today's-worth after-tax value",
         bar_color="#818cf8",
     )
+    net_gains_histogram_html = build_histogram(
+        result.net_gains_values,
+        result.net_gains_summary,
+        title="Net capital gains after tax",
+        xaxis_title="Net capital gains after tax",
+        bar_color="#f59e0b",
+    )
+    real_net_gains_histogram_html = build_histogram(
+        result.real_net_gains_values,
+        result.real_net_gains_summary,
+        title="Inflation-adjusted net capital gains",
+        xaxis_title="Inflation-adjusted net capital gains",
+        bar_color="#a78bfa",
+    )
     monthly_path_html = build_monthly_path_chart(result.monthly_path)
 
     return templates.TemplateResponse(
@@ -163,8 +181,12 @@ def _render_results(request: Request, inputs: SimulationInputs, form: dict) -> H
             "result": result,
             "summary_cards": build_summary_cards(result.summary),
             "real_summary_cards": build_summary_cards(result.real_summary),
+            "net_gains_cards": build_compact_summary_cards(result.net_gains_summary),
+            "real_net_gains_cards": build_compact_summary_cards(result.real_net_gains_summary),
             "nominal_histogram_html": nominal_histogram_html,
             "real_histogram_html": real_histogram_html,
+            "net_gains_histogram_html": net_gains_histogram_html,
+            "real_net_gains_histogram_html": real_net_gains_histogram_html,
             "monthly_path_html": monthly_path_html,
         },
     )
@@ -376,6 +398,11 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
         hovermode="closest",
         legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
         font={"family": "Inter, ui-sans-serif, system-ui", "size": 11},
+        hoverlabel={
+            "bgcolor": "#0f172a",
+            "font": {"family": "Inter, ui-sans-serif, system-ui", "size": 13, "color": "#e2e8f0"},
+            "bordercolor": "#334155",
+        },
     )
     return to_html(
         figure,
@@ -383,6 +410,15 @@ def build_monthly_path_chart(monthly_path: dict) -> str:
         include_plotlyjs="cdn",
         config={"displayModeBar": False, "responsive": True},
     )
+
+
+def build_compact_summary_cards(summary: dict[str, float]) -> list[dict[str, str | float]]:
+    return [
+        {"label": "2.5 percentile", "value": summary["p2_5"], "tone": "rose"},
+        {"label": "50 percentile", "value": summary["p50"], "tone": "teal"},
+        {"label": "97.5 percentile", "value": summary["p97_5"], "tone": "indigo"},
+        {"label": "Average", "value": summary["average"], "tone": "emerald"},
+    ]
 
 
 def build_summary_cards(summary: dict[str, float]) -> list[dict[str, str | float]]:

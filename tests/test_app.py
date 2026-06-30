@@ -10,7 +10,7 @@ def test_index_renders_form():
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Simulation inputs" in response.text
+    assert "Monte Carlo" in response.text
     assert "tailwindcss" in response.text
     assert 'name="monthly_sip"' in response.text
     assert 'min="100"' in response.text
@@ -77,3 +77,42 @@ def test_invalid_input_returns_validation_error():
 
     assert response.status_code == 400
     assert "Monthly SIP must be greater than 0." in response.text
+
+
+def test_step_up_simulate_shows_topup_and_cap():
+    response = client.post(
+        "/simulate",
+        data={
+            "monthly_sip": "10000",
+            "years": "3",
+            "expected_inflation_rate": "6",
+            "expected_return_rate": "12",
+            "seed": "123",
+            "step_up_top_up_amount": "5000",
+            "step_up_cap_amount": "18000",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "After-tax SIP simulation" in response.text
+    assert "Annual top-up" in response.text
+    assert "Monthly cap" in response.text
+    assert "5,000" in response.text
+    assert "18,000" in response.text
+
+
+def test_step_up_results_show_stepup_info_even_when_zero():
+    response = client.post(
+        "/simulate",
+        data={
+            "monthly_sip": "10000",
+            "years": "2",
+            "expected_inflation_rate": "6",
+            "expected_return_rate": "12",
+            "seed": "123",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "Annual top-up" in response.text
+    assert "Monthly cap" in response.text

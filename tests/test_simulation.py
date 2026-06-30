@@ -6,6 +6,7 @@ from simulation import (
     SimulationInputs,
     apply_exit_tax,
     build_monthly_after_tax_paths,
+    build_monthly_sip_schedule,
     build_summary,
     run_simulation,
 )
@@ -23,8 +24,10 @@ def test_fixed_sip_principal_calculation():
         )
     )
 
-    assert result.total_invested == 240_000
+    assert result.total_invested == 240_000.0
     assert result.monthly_sip == 10_000
+    assert result.step_up_top_up_amount == 0
+    assert result.step_up_cap_amount == 0
     assert np.array_equal(result.monthly_path["principal"], np.arange(1, 25) * 10_000)
 
 
@@ -59,8 +62,9 @@ def test_tax_applies_stcg_ltcg_and_exemption():
     monthly_sip = 100_000
     months = 14
     value_per_deposit = np.full((1, months), 2.0)
+    schedule = build_monthly_sip_schedule(monthly_sip, months, 0, 0)
 
-    after_tax = apply_exit_tax(monthly_sip, value_per_deposit, months)
+    after_tax = apply_exit_tax(schedule, value_per_deposit, months)
 
     gross_value = monthly_sip * 2 * months
     short_term_gains = monthly_sip * 12
@@ -72,10 +76,12 @@ def test_tax_applies_stcg_ltcg_and_exemption():
 
 def test_monthly_after_tax_path_applies_redemption_month_tax():
     monthly_sip = 100_000
-    monthly_returns = np.zeros((1, 14))
+    months = 14
+    schedule = build_monthly_sip_schedule(monthly_sip, months, 0, 0)
+    monthly_returns = np.zeros((1, months))
     monthly_returns[0, -1] = 1.0
 
-    path = build_monthly_after_tax_paths(monthly_sip, monthly_returns)
+    path = build_monthly_after_tax_paths(schedule, monthly_returns)
 
     gross_value = monthly_sip * 2 * 13 + monthly_sip
     short_term_gains = monthly_sip * 11
@@ -115,3 +121,80 @@ def test_different_seeds_change_distribution():
     second = run_simulation(SimulationInputs(**base, seed=11))
 
     assert first.summary != second.summary
+
+
+def test_build_fixed_schedule():
+    schedule = build_monthly_sip_schedule(10_000, 36, 0, 0)
+    assert np.all(schedule == 10_000)
+    assert schedule.shape == (36,)
+
+
+def test_build_step_up_schedule_year_index():
+    schedule = build_monthly_sip_schedule(10_000, 36, 5_000, 0)
+    assert schedule[0] == 10_000
+    assert schedule[11] == 10_000
+    assert schedule[12] == 15_000
+    assert schedule[23] == 15_000
+    assert schedule[24] == 20_000
+    assert schedule[35] == 20_000
+
+
+def test_build_step_up_schedule_with_cap():
+    schedule = build_monthly_sip_schedule(10_000, 36, 5_000, 18_000)
+    assert schedule[0] == 10_000
+    assert schedule[12] == 15_000
+    assert schedule[24] == 18_000
+    assert schedule[35] == 18_000
+
+
+def test_step_up_sip_total_invested():
+    result = run_simulation(
+        SimulationInputs(
+            monthly_sip=10_000,
+            years=3,
+            expected_inflation_rate=6,
+            expected_return_rate=12,
+            step_up_top_up_amount=5_000,
+            step_up_cap_amount=0,
+            seed=1,
+            simulations=500,
+        )
+    )
+    assert result.total_invested == 540_000.0
+    assert result.step_up_top_up_amount == 5_000
+    assert result.step_up_cap_amount == 0
+
+
+def test_step_up_sip_with_cap_total_invested():
+    result = run_simulation(
+        SimulationInputs(
+            monthly_sip=10_000,
+            years=3,
+            expected_inflation_rate=6,
+            expected_return_rate=12,
+            step_up_top_up_amount=5_000,
+            step_up_cap_amount=18_000,
+            seed=1,
+            simulations=500,
+        )
+    )
+    assert result.total_invested == 516_000.0
+
+
+def test_step_up_principal_path():
+    result = run_simulation(
+        SimulationInputs(
+            monthly_sip=10_000,
+            years=2,
+            expected_inflation_rate=6,
+            expected_return_rate=12,
+            step_up_top_up_amount=5_000,
+            step_up_cap_amount=0,
+            seed=1,
+            simulations=500,
+        )
+    )
+    expected = np.cumsum(
+        [10_000] * 12 + [15_000] * 12
+    ).astype(np.float64)
+    assert np.array_equal(result.monthly_path["principal"], expected)

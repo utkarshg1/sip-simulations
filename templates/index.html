@@ -32,9 +32,9 @@
         <p class="mt-1 text-xs text-slate-500">annual std dev</p>
       </div>
       <div class="rounded-2xl border border-white/8 bg-white/5 p-4 backdrop-blur">
-        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">SIP style</p>
-        <p class="mt-2 text-xl font-black text-white" id="sip-style-badge">{{ "Step-up" if form.step_up_enabled else "Fixed" }}</p>
-        <p class="mt-1 text-xs text-slate-500" id="sip-style-sub">{{ "+" + (form.step_up_rate | string) + "% / yr" if form.step_up_enabled else "constant amount" }}</p>
+        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Step-up SIP</p>
+        <p class="mt-2 text-xl font-black text-white">Base + top-up</p>
+        <p class="mt-1 text-xs text-slate-500">fixed annual increase</p>
       </div>
     </div>
   </div>
@@ -53,35 +53,6 @@
   <!-- Form card -->
   <div class="fade-up fade-up-5 rounded-3xl border border-white/12 bg-white/[0.97] p-5 text-slate-950 shadow-[0_32px_80px_rgba(2,6,23,0.45),0_1px_0_rgba(255,255,255,0.9)_inset] sm:p-7">
 
-    <!-- ── SIP Mode Segmented Slider ── -->
-    <div class="mb-5">
-      <!-- Pill track — single row, compact -->
-      <div class="sip-seg relative overflow-hidden rounded-xl bg-slate-900 p-1 shadow-[0_4px_20px_rgba(2,6,23,0.35)_inset]">
-        <!-- Sliding pill -->
-        <div id="seg-pill"
-          class="seg-pill absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.28)] transition-all duration-300"
-          style="{% if form.step_up_enabled %}left:calc(50% + 4px); background:linear-gradient(135deg,#0d9488,#14b8a6){% else %}left:4px; background:#fff{% endif %}">
-        </div>
-        <!-- Buttons -->
-        <div class="relative grid grid-cols-2">
-          <button type="button" id="btn-fixed" onclick="setSipMode(false)"
-            class="seg-btn flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 transition-all duration-200">
-            <svg id="icon-fixed" class="h-4 w-4 shrink-0 transition-colors duration-200 {{ 'text-teal-600' if not form.step_up_enabled else 'text-slate-500' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" d="M4 12h16M4 7h6M4 17h6"/>
-            </svg>
-            <span id="label-fixed" class="text-sm font-bold transition-colors duration-200 {{ 'text-slate-900' if not form.step_up_enabled else 'text-slate-400' }}">Fixed SIP</span>
-          </button>
-          <button type="button" id="btn-stepup" onclick="setSipMode(true)"
-            class="seg-btn flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 transition-all duration-200">
-            <svg id="icon-stepup" class="h-4 w-4 shrink-0 transition-colors duration-200 {{ 'text-teal-100' if form.step_up_enabled else 'text-slate-500' }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
-            </svg>
-            <span id="label-stepup" class="text-sm font-bold transition-colors duration-200 {{ 'text-white' if form.step_up_enabled else 'text-slate-400' }}">Step-up SIP</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
     {% if errors %}
       <div class="mb-5 flex gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
         <svg class="mt-0.5 h-4 w-4 shrink-0 text-rose-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/></svg>
@@ -92,10 +63,6 @@
     {% endif %}
 
     <form action="/simulate" method="post" class="grid gap-4" id="sim-form">
-      <!-- Hidden inputs for step-up state -->
-      <input type="hidden" name="step_up_enabled" id="hidden-step-up-enabled" value="{{ 'on' if form.step_up_enabled else '' }}">
-      <input type="hidden" name="step_up_rate" id="hidden-step-up-rate" value="{{ form.step_up_rate if form.step_up_rate else 10 }}">
-
       <!-- Monthly SIP -->
       <label class="grid gap-1.5">
         <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Monthly SIP (₹)</span>
@@ -107,24 +74,31 @@
         </div>
       </label>
 
-      <!-- Step-up rate field (visible only in step-up mode) — compact single block -->
-      <div id="step-up-field" class="{{ '' if form.step_up_enabled else 'hidden' }} rounded-xl border border-teal-100 bg-teal-50 px-3 py-2.5">
-        <div class="flex items-center gap-3">
-          <span class="shrink-0 text-xs font-bold uppercase tracking-widest text-slate-500">Step-up</span>
-          <input type="range" min="1" max="50" step="1"
-            class="step-up-slider flex-1"
-            id="step-up-range"
-            value="{{ form.step_up_rate if form.step_up_rate else 10 }}"
-            oninput="updateStepUpRate(this.value)">
-          <span class="shrink-0 w-14 text-right text-sm font-black text-teal-700" id="step-up-rate-display">{{ form.step_up_rate if form.step_up_rate else 10 }}% / yr</span>
-        </div>
-        <div class="mt-2 flex gap-1">
-          <button type="button" onclick="updateStepUpRate(5)"  class="preset-btn flex-1">5%</button>
-          <button type="button" onclick="updateStepUpRate(10)" class="preset-btn flex-1">10%</button>
-          <button type="button" onclick="updateStepUpRate(15)" class="preset-btn flex-1">15%</button>
-          <button type="button" onclick="updateStepUpRate(20)" class="preset-btn flex-1">20%</button>
-          <button type="button" onclick="updateStepUpRate(25)" class="preset-btn flex-1">25%</button>
-        </div>
+      <!-- Top-up + Cap -->
+      <div class="grid gap-4 grid-cols-2">
+        <label class="grid gap-1.5">
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Annual top-up (₹)</span>
+          <div class="relative">
+            <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold text-slate-400">₹</span>
+            <input
+              class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-8 pr-4 text-lg font-bold text-slate-900"
+              type="number" min="0" step="100" name="step_up_top_up_amount" value="{{ form.step_up_top_up_amount }}" placeholder="0">
+          </div>
+          <p class="mt-1 text-xs text-slate-400">Fixed amount added each year</p>
+        </label>
+        <label class="grid gap-1.5">
+          <span class="text-xs font-bold uppercase tracking-widest text-slate-500">Monthly cap (₹)</span>
+          <div class="relative">
+            <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold text-slate-400">₹</span>
+            <input id="cap-input"
+              class="input-field w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-8 pr-4 text-lg font-bold text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed"
+              type="number" min="0" step="100" name="step_up_cap_amount" value="{{ form.step_up_cap_amount }}" placeholder="0"{% if form.step_up_cap_amount <= 0 %} disabled{% endif %}>
+          </div>
+          <label class="mt-1 flex cursor-pointer items-center gap-2 select-none">
+            <input id="cap-toggle" type="checkbox" class="rounded border-slate-300 text-teal-500 focus:ring-teal-400"{% if form.step_up_cap_amount > 0 %} checked{% endif %}>
+            <span class="text-xs text-slate-500">Enable cap</span>
+          </label>
+        </label>
       </div>
 
       <!-- Years + Seed -->
@@ -176,65 +150,13 @@
 </section>
 
 <script>
-  var isStepUp = {{ 'true' if form.step_up_enabled else 'false' }};
-
-  function setSipMode(stepUp) {
-    isStepUp = stepUp;
-    var pill       = document.getElementById('seg-pill');
-    var stepField  = document.getElementById('step-up-field');
-    var hiddenEn   = document.getElementById('hidden-step-up-enabled');
-    var iconFixed  = document.getElementById('icon-fixed');
-    var iconStepup = document.getElementById('icon-stepup');
-    var lblFixed   = document.getElementById('label-fixed');
-    var lblStepup  = document.getElementById('label-stepup');
-    var badge      = document.getElementById('sip-style-badge');
-    var badgeSub   = document.getElementById('sip-style-sub');
-
-    if (stepUp) {
-      pill.style.left       = 'calc(50% + 4px)';
-      pill.style.background = 'linear-gradient(135deg,#0d9488,#14b8a6)';
-      stepField.classList.remove('hidden');
-      hiddenEn.value = 'on';
-      iconFixed.style.color  = '#94a3b8';
-      iconStepup.style.color = '#ccfbf1';
-      lblFixed.style.color   = '#94a3b8';
-      lblStepup.style.color  = '#fff';
-      if (badge)    badge.textContent    = 'Step-up';
-      if (badgeSub) badgeSub.textContent = '+' + document.getElementById('hidden-step-up-rate').value + '% / yr';
-    } else {
-      pill.style.left       = '4px';
-      pill.style.background = '#fff';
-      stepField.classList.add('hidden');
-      hiddenEn.value = '';
-      iconFixed.style.color  = '#0d9488';
-      iconStepup.style.color = '#94a3b8';
-      lblFixed.style.color   = '#0f172a';
-      lblStepup.style.color  = '#94a3b8';
-      if (badge)    badge.textContent    = 'Fixed';
-      if (badgeSub) badgeSub.textContent = 'constant amount';
-    }
-  }
-
-  function updateStepUpRate(val) {
-    val = parseInt(val, 10);
-    var slider = document.getElementById('step-up-range');
-    slider.value = val;
-    var pct = ((val - 1) / 49 * 100).toFixed(1) + '%';
-    slider.style.background = 'linear-gradient(to right,#14b8a6 0%,#14b8a6 ' + pct + ',#e2e8f0 ' + pct + ')';
-    document.getElementById('hidden-step-up-rate').value = val;
-    document.getElementById('step-up-rate-display').textContent = val + '% / yr';
-    var badgeSub = document.getElementById('sip-style-sub');
-    if (badgeSub && isStepUp) badgeSub.textContent = '+' + val + '% / yr';
-    document.querySelectorAll('.preset-btn').forEach(function(btn) {
-      var p = parseInt(btn.textContent);
-      if (p === val) btn.classList.add('preset-btn-active');
-      else           btn.classList.remove('preset-btn-active');
+  var capToggle = document.getElementById('cap-toggle');
+  var capInput = document.getElementById('cap-input');
+  if (capToggle && capInput) {
+    capToggle.addEventListener('change', function () {
+      capInput.disabled = !this.checked;
+      if (!this.checked) capInput.value = '0';
     });
   }
-
-  document.addEventListener('DOMContentLoaded', function() {
-    var initVal = parseInt(document.getElementById('step-up-range').value) || 10;
-    updateStepUpRate(initVal);
-  });
 </script>
 {% endblock %}

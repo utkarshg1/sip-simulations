@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -22,9 +22,10 @@ class SimulationInputs:
     years: int
     expected_inflation_rate: float
     expected_return_rate: float
+    step_up_top_up_amount: float = 0.0
+    step_up_cap_amount: float = 0.0
     seed: int | None = None
     simulations: int = SIMULATION_COUNT
-    step_up_rate: float = 0.0          # annual % increase in SIP (0 = flat)
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,9 @@ class SimulationResult:
     final_values_after_tax: NDArray[np.float64]
     final_values_before_tax: NDArray[np.float64]
     real_values_after_tax: NDArray[np.float64]
+    net_gains_values: NDArray[np.float64]
+    real_net_gains_values: NDArray[np.float64]
+    yearly_schedule: list[dict[str, float]] | None
     monthly_path: dict[str, NDArray[np.float64]]
     monthly_sip: float
     total_invested: float
@@ -40,8 +44,10 @@ class SimulationResult:
     seed: int | None
     summary: dict[str, float]
     real_summary: dict[str, float]
-    step_up_rate: float = 0.0
-    yearly_sip_schedule: list[dict] = field(default_factory=list)
+    net_gains_summary: dict[str, float]
+    real_net_gains_summary: dict[str, float]
+    step_up_top_up_amount: float = 0.0
+    step_up_cap_amount: float = 0.0
 
 
 def validate_inputs(inputs: SimulationInputs) -> list[str]:
@@ -60,37 +66,49 @@ def validate_inputs(inputs: SimulationInputs) -> list[str]:
         errors.append("Expected inflation must be greater than -99%.")
     if inputs.expected_return_rate <= -99:
         errors.append("Expected return must be greater than -99%.")
-    if inputs.step_up_rate < 0 or inputs.step_up_rate > 100:
-        errors.append("Step-up rate must be between 0% and 100%.")
+    if inputs.step_up_top_up_amount < 0:
+        errors.append("Annual top-up amount cannot be negative.")
+    if inputs.step_up_cap_amount < 0:
+        errors.append("Monthly cap amount cannot be negative.")
     return errors
 
 
-def build_monthly_sip_amounts(
-    monthly_sip: float,
-    years: int,
-    step_up_rate: float,
+def build_monthly_sip_schedule(
+    base_sip: float,
+    months: int,
+    top_up_amount: float,
+    cap_amount: float,
 ) -> NDArray[np.float64]:
-    """Return an array of shape (months,) with the SIP amount for each month."""
-    yearly_amounts = [
-        monthly_sip * (1 + step_up_rate / 100) ** year
-        for year in range(years)
-    ]
-    return np.repeat(yearly_amounts, 12).astype(np.float64)
+    if top_up_amount <= 0 and cap_amount <= 0:
+        return np.full(months, base_sip, dtype=np.float64)
+    year_indices = np.arange(months, dtype=np.float64) // 12
+    schedule = base_sip + top_up_amount * year_indices
+    if cap_amount > 0:
+        schedule = np.minimum(schedule, cap_amount)
+    return schedule
 
 
 def build_yearly_sip_schedule(
-    monthly_sip: float,
+    base_sip: float,
     years: int,
-    step_up_rate: float,
-) -> list[dict]:
-    return [
-        {
-            "year": year + 1,
-            "monthly_sip": round(monthly_sip * (1 + step_up_rate / 100) ** year, 2),
-            "annual_total": round(monthly_sip * (1 + step_up_rate / 100) ** year * 12, 2),
-        }
-        for year in range(years)
-    ]
+    top_up_amount: float,
+    cap_amount: float,
+) -> list[dict[str, float]]:
+    schedule: list[dict[str, float]] = []
+    cumulative: float = 0.0
+    for year in range(1, years + 1):
+        monthly = base_sip + top_up_amount * (year - 1)
+        if cap_amount > 0:
+            monthly = min(monthly, cap_amount)
+        annual = monthly * 12
+        cumulative += annual
+        schedule.append({
+            "year": year,
+            "monthly_sip": monthly,
+            "annual_principal": annual,
+            "cumulative_principal": cumulative,
+        })
+    return schedule
 
 
 def run_simulation(inputs: SimulationInputs) -> SimulationResult:
@@ -101,19 +119,20 @@ def run_simulation(inputs: SimulationInputs) -> SimulationResult:
     months = inputs.years * 12
     rng = np.random.default_rng(inputs.seed)
 
-    monthly_sip_amounts = build_monthly_sip_amounts(
-        inputs.monthly_sip, inputs.years, inputs.step_up_rate
+    monthly_sip_amounts = build_monthly_sip_schedule(
+        inputs.monthly_sip, months, inputs.step_up_top_up_amount, inputs.step_up_cap_amount,
     )
 
     final_before_tax = np.empty(inputs.simulations, dtype=np.float64)
     final_after_tax = np.empty(inputs.simulations, dtype=np.float64)
     real_after_tax = np.empty(inputs.simulations, dtype=np.float64)
     monthly_after_tax_paths = np.empty((inputs.simulations, months), dtype=np.float32)
+    cumulative_inflation_values = np.empty(inputs.simulations, dtype=np.float64)
 
     for start in range(0, inputs.simulations, SIMULATION_CHUNK_SIZE):
         end = min(start + SIMULATION_CHUNK_SIZE, inputs.simulations)
         chunk_size = end - start
-        before_tax, after_tax, real_values, monthly_paths = simulate_chunk(
+        before_tax, after_tax, real_values, monthly_paths, cum_inf = simulate_chunk(
             inputs,
             rng,
             chunk_size,
@@ -124,20 +143,25 @@ def run_simulation(inputs: SimulationInputs) -> SimulationResult:
         final_after_tax[start:end] = after_tax
         real_after_tax[start:end] = real_values
         monthly_after_tax_paths[start:end] = monthly_paths.astype(np.float32)
+        cumulative_inflation_values[start:end] = cum_inf
 
     total_invested = float(monthly_sip_amounts.sum())
     principal_path = np.cumsum(monthly_sip_amounts)
 
-    yearly_schedule = (
-        build_yearly_sip_schedule(inputs.monthly_sip, inputs.years, inputs.step_up_rate)
-        if inputs.step_up_rate > 0
-        else []
+    net_gains = final_after_tax - total_invested
+    real_net_gains = net_gains / cumulative_inflation_values
+
+    yearly_schedule = build_yearly_sip_schedule(
+        inputs.monthly_sip, inputs.years, inputs.step_up_top_up_amount, inputs.step_up_cap_amount,
     )
 
     return SimulationResult(
         final_values_after_tax=final_after_tax,
         final_values_before_tax=final_before_tax,
         real_values_after_tax=real_after_tax,
+        net_gains_values=net_gains,
+        real_net_gains_values=real_net_gains,
+        yearly_schedule=yearly_schedule,
         monthly_path=build_monthly_path_summary(monthly_after_tax_paths, principal_path),
         monthly_sip=inputs.monthly_sip,
         total_invested=total_invested,
@@ -146,8 +170,10 @@ def run_simulation(inputs: SimulationInputs) -> SimulationResult:
         seed=inputs.seed,
         summary=build_summary(final_after_tax),
         real_summary=build_summary(real_after_tax),
-        step_up_rate=inputs.step_up_rate,
-        yearly_sip_schedule=yearly_schedule,
+        net_gains_summary=build_summary(net_gains),
+        real_net_gains_summary=build_summary(real_net_gains),
+        step_up_top_up_amount=inputs.step_up_top_up_amount,
+        step_up_cap_amount=inputs.step_up_cap_amount,
     )
 
 
@@ -158,6 +184,7 @@ def simulate_chunk(
     months: int,
     monthly_sip_amounts: NDArray[np.float64],
 ) -> tuple[
+    NDArray[np.float64],
     NDArray[np.float64],
     NDArray[np.float64],
     NDArray[np.float64],
@@ -194,7 +221,7 @@ def simulate_chunk(
 
     cumulative_inflation = np.prod(1 + annual_inflation, axis=1)
     real_values = after_tax / cumulative_inflation
-    return before_tax, after_tax, real_values, monthly_after_tax_paths
+    return before_tax, after_tax, real_values, monthly_after_tax_paths, cumulative_inflation
 
 
 def build_monthly_after_tax_paths(
