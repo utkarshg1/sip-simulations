@@ -6,6 +6,12 @@ A high-performance web app that runs **100,000 NumPy-vectorised Monte Carlo simu
 
 ---
 
+## What's new in v2.1
+
+- **New logo &amp; favicon** — custom SVG icon featuring the Devanagari र letter with a growth chart line, styled in the app's teal–indigo gradient. Used as browser favicon, nav header icon, and hero mark.
+- **GitHub button** — link to the source repository in the app header with the Octocat icon.
+- **Author attribution** — "by Utkarsh Gaikwad" displayed in the header.
+
 ## What's new in v2.0
 
 - **PostgreSQL caching** — simulation results are cached by parameter hash. Repeated runs with the same inputs load instantly without re-simulating.
@@ -149,6 +155,7 @@ Use the **Copy link** button on any results page to copy the URL and share it. A
 │   ├── index.html    # Input form with top-up, cap, rates, and seed fields
 │   └── results.html  # Results page with histograms, summary cards, yearly schedule, path chart
 ├── static/
+│   ├── favicon.svg   # SVG logo — browser favicon, nav header, hero icon
 │   └── styles.css    # Custom styles and animations (mobile-responsive)
 ├── tests/
 │   ├── test_app.py
